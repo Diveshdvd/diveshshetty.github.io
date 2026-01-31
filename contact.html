@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Contact — Divesh Shetty</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+<header>
+  <div class="nav">
+    <h1>Divesh Shetty</h1>
+    <nav>
+      <a href="index.html">Home</a>
+      <a href="blog.html">Writing</a>
+      <a href="about.html">About</a>
+      <a href="contact.html">Contact</a>
+    </nav>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <h2 class="page-title">Contact</h2>
+  <p class="page-subtitle">
+    Clear communication beats clever introductions.
+  </p>
+
+  <p>
+    The best way to reach me depends on context.
+    For professional conversations, email or LinkedIn works best.
+  </p>
+
+  <div class="divider"></div>
+
+  <!-- CONTACT LINKS -->
+  <section class="contact-links">
+    <p>
+      <strong>Email</strong><br>
+      <a href="mailto:diveshdvd28@gmail.com">diveshdvd28@gmail.com</a>
+    </p>
+
+    <p>
+      <strong>LinkedIn</strong><br>
+      <a href="https://www.linkedin.com/in/divesh-shetty-049949214/" target="_blank">
+        linkedin.com/in/divesh-shetty-049949214
+      </a>
+    </p>
+
+    <p>
+      <strong>Instagram</strong><br>
+      <a href="https://instagram.com/divesh_dvd" target="_blank">
+        @divesh_dvd
+      </a>
+    </p>
+
+    <p>
+      <strong>Twitter / X</strong><br>
+      <a href="https://twitter.com/Diveshdvd" target="_blank">
+        @Diveshdvd
+      </a>
+    </p>
+  </section>
+
+  <div class="divider"></div>
+
+  <!-- WHATSAPP FUN QUESTION -->
+  <section class="whatsapp">
+    <h3>WhatsApp (highly classified access)</h3>
+
+    <p>
+      To protect my WhatsApp from unnecessary chaos,
+      access is granted only after answering one very important question.
+    </p>
+
+    <p class="muted">
+      This will not be graded. But it will be judged.
+    </p>
+
+    <div class="puzzle-box">
+      <p><strong>Question:</strong></p>
+
+      <p>
+        Which one does <strong>not</strong> belong on a pizza?
+      </p>
+
+      <ul>
+        <li>🍕 Cheese</li>
+        <li>🍕 Tomato</li>
+        <li>🍕 Olives</li>
+        <li>🍕 Pineapple</li>
+      </ul>
+
+      <input
+        type="text"
+        id="answer"
+        placeholder="Type your answer here"
+      >
+
+      <button onclick="revealWhatsApp()">Submit</button>
+
+      <p id="result" class="muted"></p>
+    </div>
+  </section>
+
+</main>
+
+<footer class="wrap">
+  <p class="muted">
+    © 2026 Divesh Shetty · Built slowly, with intent.
+  </p>
+</footer>
+
+<script>
+  function revealWhatsApp() {
+    const input = document.getElementById("answer").value
+      .toLowerCase()
+      .trim();
+
+    const result = document.getElementById("result");
+
+    if (input.includes("pineapple")) {
+      result.innerHTML =
+        "Correct 🍕 Humanity is safe.<br><br>" +
+        "<strong>WhatsApp:</strong> +91 83569 57415";
+    } else if (input.length === 0) {
+      result.innerHTML =
+        "At least take a guess 😅";
+    } else {
+      result.innerHTML =
+        "Interesting choice… but no. Think controversial fruit 👀";
+    }
+  }
+</script>
+
+</body>
+</html>
