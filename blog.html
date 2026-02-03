@@ -4,14 +4,25 @@
   <meta charset="UTF-8">
   <title>Writing — Divesh Shetty</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <meta name="description" content="Essays by Divesh Shetty on technology, systems thinking, discipline, and real-world experience.">
+
   <link rel="stylesheet" href="style.css">
 </head>
 
 <body>
 
+<!-- Cursor Glow -->
+<div class="cursor-glow"></div>
+
 <header>
   <div class="nav">
-    <h1>Writing</h1>
+    <h1>
+      <a href="index.html" style="color:inherit;text-decoration:none;">
+        Divesh Shetty
+      </a>
+    </h1>
+
     <nav>
       <a href="index.html">Home</a>
       <a href="blog.html">Writing</a>
@@ -23,8 +34,9 @@
 <main class="wrap">
 
   <!-- INTRO -->
-  <section class="writing-intro">
-    <h2 class="page-title">Writing</h2>
+  <section class="writing-intro reveal">
+    <h2 class="page-title gradient-text">Writing</h2>
+
     <p class="page-subtitle">
       Essays on technology, systems, discipline, and real life.
     </p>
@@ -42,11 +54,12 @@
     </p>
   </section>
 
-  <div class="divider"></div>
+  <div class="divider reveal"></div>
 
   <!-- TOPICS -->
-  <section class="topics">
+  <section class="topics reveal">
     <h3>Topics I Write About</h3>
+
     <ul>
       <li><strong>Technology</strong> — systems, infrastructure, internal tools</li>
       <li><strong>Engineering Mindset</strong> — discipline, ownership, consistency</li>
@@ -55,14 +68,16 @@
     </ul>
   </section>
 
-  <div class="divider"></div>
+  <div class="divider reveal"></div>
 
   <!-- POSTS -->
   <section class="post-list">
 
-    <article class="post-item">
+    <article class="post-item reveal">
       <h2>
-        <a href="post.html">Virat Kohli and the Discipline of Showing Up</a>
+        <a href="post.html">
+          Virat Kohli and the Discipline of Showing Up
+        </a>
       </h2>
       <div class="meta">Mindset · Consistency · Excellence</div>
       <p>
@@ -71,9 +86,11 @@
       </p>
     </article>
 
-    <article class="post-item">
+    <article class="post-item reveal">
       <h2>
-        <a href="post.html">Technology, Reliability, and Quiet Engineering</a>
+        <a href="post.html">
+          Technology, Reliability, and Quiet Engineering
+        </a>
       </h2>
       <div class="meta">Technology · Systems · Responsibility</div>
       <p>
@@ -82,9 +99,11 @@
       </p>
     </article>
 
-    <article class="post-item">
+    <article class="post-item reveal">
       <h2>
-        <a href="post.html">Politics, Power, and Responsibility in the Digital Age</a>
+        <a href="post.html">
+          Politics, Power, and Responsibility in the Digital Age
+        </a>
       </h2>
       <div class="meta">Society · Power · Accountability</div>
       <p>
@@ -93,9 +112,11 @@
       </p>
     </article>
 
-    <article class="post-item">
+    <article class="post-item reveal">
       <h2>
-        <a href="post.html">Mumbai: Chaos, Dreams, and Quiet Lessons</a>
+        <a href="post.html">
+          Mumbai: Chaos, Dreams, and Quiet Lessons
+        </a>
       </h2>
       <div class="meta">Life · City · Growth</div>
       <p>
@@ -106,19 +127,54 @@
 
   </section>
 
-  <div class="divider"></div>
+  <div class="divider reveal"></div>
 
-  <p class="muted">
+  <p class="muted reveal">
     Writing here is slow, intentional, and unoptimized for algorithms.
   </p>
 
 </main>
 
-<footer class="wrap">
+<footer class="wrap reveal">
   <p class="muted">
     © 2026 Divesh Shetty · Built slowly, with intent.
   </p>
 </footer>
+
+<!-- ================= SCRIPTS ================= -->
+
+<script>
+/* Scroll Reveal */
+const reveals = document.querySelectorAll('.reveal');
+
+const observer = new IntersectionObserver(entries => {
+  entries.forEach(entry => {
+    if (entry.isIntersecting) {
+      entry.target.classList.add('visible');
+      observer.unobserve(entry.target);
+    }
+  });
+}, { threshold: 0.15 });
+
+reveals.forEach(el => observer.observe(el));
+</script>
+
+<script>
+/* Cursor Glow */
+const glow = document.querySelector('.cursor-glow');
+window.addEventListener('mousemove', e => {
+  glow.style.left = e.clientX + 'px';
+  glow.style.top = e.clientY + 'px';
+});
+</script>
+
+<script>
+/* Dev Easter Egg */
+console.log(
+  "%cWriting is thinking in public.",
+  "color:#7dd3fc;font-size:15px;font-family:monospace"
+);
+</script>
 
 </body>
 </html>
