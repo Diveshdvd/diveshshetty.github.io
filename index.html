@@ -4,46 +4,120 @@
   <meta charset="UTF-8">
   <title>Divesh Shetty</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <!-- SEO -->
+  <meta name="description" content="Divesh Shetty — software developer and systems engineer. Writing about code, reliability, and real-world technology.">
+
   <link rel="stylesheet" href="style.css">
 </head>
 
 <body>
 
+<!-- Cursor Glow -->
+<div class="cursor-glow"></div>
+
 <header>
   <div class="nav">
-    <h1>Divesh Shetty</h1>
-    <nav>
-  <a href="index.html">Home</a>
-  <a href="blog.html">Writing</a>
-  <a href="about.html">About</a>
-  <a href="contact.html">Contact</a>
-</nav>
+    <h1>
+      <a href="index.html" style="color:inherit;text-decoration:none;">
+        Divesh Shetty
+      </a>
+    </h1>
 
+    <nav>
+      <a href="index.html">Home</a>
+      <a href="blog.html">Writing</a>
+      <a href="about.html">About</a>
+      <a href="contact.html">Contact</a>
+    </nav>
   </div>
 </header>
 
-<section class="wrap hero">
+<!-- HERO -->
+<section class="wrap hero reveal">
   <div>
-    <h2>
-      Technology,<br>
+    <h2 class="gradient-text">
+      Code,<br>
       systems,<br>
-      and lived experience.
+      and clarity.
     </h2>
+
     <p>
-      I work at the American School of Bombay as an IT Support and Systems
-      Solutions Developer. I also freelance as a software tester and developer.
-      This space is where I write — freely and thoughtfully.
+     I work as an IT Support and Systems Solutions Developer at the American School of Bombay,
+  building and maintaining internal systems, automating workflows, and solving
+  real-world technical problems through code.
+    </p>
+
+    <p>
+      I also freelance as a developer and tester. This site is my personal space
+      for writing, experiments, and ideas I want to think through in public.
+    </p>
+
+    <p class="muted" style="margin-top:24px;">
+      Currently focused on reliable systems, clean code, and long-form writing.
     </p>
   </div>
 
   <img src="diveshdvd.jpeg" alt="Portrait of Divesh Shetty">
 </section>
 
-<footer class="wrap">
-  <p class="muted">
+<footer class="wrap reveal">
+  <p class="muted" style="font-size: 0.9rem;">
     © 2026 Divesh Shetty · Built slowly, with intent.
   </p>
+
+  <p class="muted" style="font-size: 0.85rem; margin-top: 6px;">
+    Contact: 
+    <a href="mailto:diveshdvd28@gmail.com" style="color:inherit; text-decoration:underline;">
+      diveshdvd28@gmail.com
+    </a>
+  </p>
 </footer>
+
+<!-- ================= SCRIPTS ================= -->
+
+<script>
+/* Scroll Reveal */
+const reveals = document.querySelectorAll('.reveal');
+
+const observer = new IntersectionObserver(entries => {
+  entries.forEach(entry => {
+    if (entry.isIntersecting) {
+      entry.target.classList.add('visible');
+      observer.unobserve(entry.target);
+    }
+  });
+}, { threshold: 0.15 });
+
+reveals.forEach(el => observer.observe(el));
+</script>
+
+<script>
+/* Cursor Glow */
+const glow = document.querySelector('.cursor-glow');
+window.addEventListener('mousemove', e => {
+  glow.style.left = e.clientX + 'px';
+  glow.style.top = e.clientY + 'px';
+});
+</script>
+
+<script>
+/* Hero Parallax */
+const heroImg = document.querySelector('.hero img');
+window.addEventListener('scroll', () => {
+  if (!heroImg) return;
+  const offset = window.scrollY * 0.15;
+  heroImg.style.transform = `translateY(${offset}px)`;
+});
+</script>
+
+<script>
+/* Dev Easter Egg */
+console.log(
+  "%cBuilt slowly. With intent.",
+  "color:#7dd3fc;font-size:16px;font-family:monospace"
+);
+</script>
 
 </body>
 </html>
