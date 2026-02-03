@@ -1,25 +1,47 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+  <meta charset="UTF-8">
   <title>Writing — Divesh Shetty</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <meta name="description" content="Essays by Divesh Shetty on discipline, technology, systems, and real-world responsibility.">
+
   <link rel="stylesheet" href="style.css">
 </head>
+
 <body>
+
+<!-- Reading Progress Bar -->
+<div id="progress"></div>
+
+<!-- Cursor Glow -->
+<div class="cursor-glow"></div>
 
 <header>
   <div class="nav">
-    <a href="index.html">← Home</a>
+    <h1>
+      <a href="index.html" style="color:inherit;text-decoration:none;">
+        Divesh Shetty
+      </a>
+    </h1>
+
+    <nav>
+      <a href="index.html">Home</a>
+      <a href="blog.html">Writing</a>
+      <a href="about.html">About</a>
+    </nav>
   </div>
 </header>
 
 <main class="wrap">
 
   <!-- POST 1 -->
-  <article class="post">
+  <article class="post reveal">
     <h2>Virat Kohli and the Discipline of Showing Up</h2>
-    <div class="meta">Cricket • Mindset • Inspiration</div>
+    <div class="meta">Cricket · Mindset · Inspiration</div>
 
-    <img src="kohli.jpg">
+    <img src="kohli.jpg" alt="Virat Kohli batting">
 
     <p>
       Virat Kohli’s journey was never about talent alone. Talent gets noticed,
@@ -41,14 +63,14 @@
     </p>
   </article>
 
-  <div class="divider"></div>
+  <div class="divider reveal"></div>
 
   <!-- POST 2 -->
-  <article class="post">
+  <article class="post reveal">
     <h2>Mumbai: Chaos, Dreams, and Quiet Lessons</h2>
-    <div class="meta">City • Life • Growth</div>
+    <div class="meta">City · Life · Growth</div>
 
-    <img src="mumbai.jpg">
+    <img src="mumbai.jpg" alt="Mumbai city street">
 
     <p>
       Mumbai is not gentle. It does not wait, and it does not apologize.
@@ -68,14 +90,14 @@
     </p>
   </article>
 
-  <div class="divider"></div>
+  <div class="divider reveal"></div>
 
   <!-- POST 3 -->
-  <article class="post">
+  <article class="post reveal">
     <h2>Politics, Power, and Responsibility</h2>
-    <div class="meta">Politics • Society • Thought</div>
+    <div class="meta">Politics · Society · Thought</div>
 
-    <img src="politics.jpg">
+    <img src="politics.jpg" alt="Abstract representation of politics and power">
 
     <p>
       Politics today is louder than ever, yet clarity feels rare. In a digital
@@ -94,7 +116,59 @@
     </p>
   </article>
 
+  <footer class="reveal" style="margin-top:160px;">
+    <p class="muted">
+      Written slowly. Revised often.
+    </p>
+  </footer>
+
 </main>
+
+<!-- ================= SCRIPTS ================= -->
+
+<script>
+/* Scroll Reveal */
+const reveals = document.querySelectorAll('.reveal');
+
+const observer = new IntersectionObserver(entries => {
+  entries.forEach(entry => {
+    if (entry.isIntersecting) {
+      entry.target.classList.add('visible');
+      observer.unobserve(entry.target);
+    }
+  });
+}, { threshold: 0.15 });
+
+reveals.forEach(el => observer.observe(el));
+</script>
+
+<script>
+/* Reading Progress Bar */
+const bar = document.getElementById('progress');
+
+window.addEventListener('scroll', () => {
+  const h = document.documentElement;
+  const percent = (h.scrollTop / (h.scrollHeight - h.clientHeight)) * 100;
+  bar.style.width = percent + '%';
+});
+</script>
+
+<script>
+/* Cursor Glow */
+const glow = document.querySelector('.cursor-glow');
+window.addEventListener('mousemove', e => {
+  glow.style.left = e.clientX + 'px';
+  glow.style.top = e.clientY + 'px';
+});
+</script>
+
+<script>
+/* Dev Easter Egg */
+console.log(
+  "%cEssays are systems too.",
+  "color:#7dd3fc;font-size:16px;font-family:monospace"
+);
+</script>
 
 </body>
 </html>
