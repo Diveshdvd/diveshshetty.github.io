@@ -333,3 +333,68 @@ ul li::before {
     transition: none !important;
   }
 }
+
+/* =========================
+   MOBILE RESPONSIVENESS
+   ========================= */
+
+@media (max-width: 768px) {
+
+  /* Global spacing */
+  body {
+    font-size: 16px;
+    line-height: 1.6;
+  }
+
+  .wrap {
+    padding: 32px 20px;
+  }
+
+  /* Navigation */
+  .nav {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  .nav nav {
+    display: flex;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+
+  /* Hero section */
+  .hero {
+    display: flex;
+    flex-direction: column-reverse;
+    gap: 32px;
+  }
+
+  .hero img {
+    width: 100%;
+    max-width: 320px;
+    margin: 0 auto;
+    transform: none !important; /* disable parallax on mobile */
+  }
+
+  /* Headings */
+  .hero h2 {
+    font-size: 2.2rem;
+    line-height: 1.2;
+  }
+
+  /* Footer */
+  footer {
+    text-align: center;
+  }
+
+  footer p {
+    margin: 6px 0;
+  }
+
+  /* Cursor glow off on mobile */
+  .cursor-glow {
+    display: none;
+  }
+}
+
