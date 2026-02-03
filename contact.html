@@ -4,14 +4,25 @@
   <meta charset="UTF-8">
   <title>Contact — Divesh Shetty</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <meta name="description" content="Contact Divesh Shetty — email, LinkedIn, and a lightly guarded WhatsApp gate.">
+
   <link rel="stylesheet" href="style.css">
 </head>
 
 <body>
 
+<!-- Cursor Glow -->
+<div class="cursor-glow"></div>
+
 <header>
   <div class="nav">
-    <h1>Divesh Shetty</h1>
+    <h1>
+      <a href="index.html" style="color:inherit;text-decoration:none;">
+        Divesh Shetty
+      </a>
+    </h1>
+
     <nav>
       <a href="index.html">Home</a>
       <a href="blog.html">Writing</a>
@@ -23,52 +34,56 @@
 
 <main class="wrap">
 
-  <h2 class="page-title">Contact</h2>
-  <p class="page-subtitle">
-    Clear communication beats clever introductions.
-  </p>
+  <section class="reveal">
+    <h2 class="page-title">Contact</h2>
+    <p class="page-subtitle">
+      Clear communication beats clever introductions.
+    </p>
 
-  <p>
-    The best way to reach me depends on context.
-    For professional conversations, email or LinkedIn works best.
-  </p>
+    <p>
+      The best way to reach me depends on context.
+      For professional conversations, email or LinkedIn works best.
+    </p>
+  </section>
 
-  <div class="divider"></div>
+  <div class="divider reveal"></div>
 
   <!-- CONTACT LINKS -->
-  <section class="contact-links">
+  <section class="contact-links reveal">
     <p>
       <strong>Email</strong><br>
-      <a href="mailto:diveshdvd28@gmail.com">diveshdvd28@gmail.com</a>
+      <a href="mailto:diveshdvd28@gmail.com">
+        diveshdvd28@gmail.com
+      </a>
     </p>
 
     <p>
       <strong>LinkedIn</strong><br>
-      <a href="https://www.linkedin.com/in/divesh-shetty-049949214/" target="_blank">
-        linkedin.com/in/divesh-shetty-049949214
+      <a href="https://www.linkedin.com/in/divesh-shetty-049949214/" target="_blank" rel="noopener">
+        linkedin.com/in/divesh-shetty
       </a>
     </p>
 
     <p>
       <strong>Instagram</strong><br>
-      <a href="https://instagram.com/divesh_dvd" target="_blank">
+      <a href="https://instagram.com/divesh_dvd" target="_blank" rel="noopener">
         @divesh_dvd
       </a>
     </p>
 
     <p>
       <strong>Twitter / X</strong><br>
-      <a href="https://twitter.com/Diveshdvd" target="_blank">
+      <a href="https://twitter.com/Diveshdvd" target="_blank" rel="noopener">
         @Diveshdvd
       </a>
     </p>
   </section>
 
-  <div class="divider"></div>
+  <div class="divider reveal"></div>
 
-  <!-- WHATSAPP FUN QUESTION -->
-  <section class="whatsapp">
-    <h3>WhatsApp (highly classified access)</h3>
+  <!-- WHATSAPP GATE -->
+  <section class="whatsapp reveal">
+    <h3>WhatsApp (lightly guarded access)</h3>
 
     <p>
       To protect my WhatsApp from unnecessary chaos,
@@ -97,6 +112,7 @@
         type="text"
         id="answer"
         placeholder="Type your answer here"
+        autocomplete="off"
       >
 
       <button onclick="revealWhatsApp()">Submit</button>
@@ -107,32 +123,67 @@
 
 </main>
 
-<footer class="wrap">
+<footer class="wrap reveal">
   <p class="muted">
     © 2026 Divesh Shetty · Built slowly, with intent.
   </p>
 </footer>
 
+<!-- ================= SCRIPTS ================= -->
+
 <script>
-  function revealWhatsApp() {
-    const input = document.getElementById("answer").value
-      .toLowerCase()
-      .trim();
+/* WhatsApp Gate */
+function revealWhatsApp() {
+  const input = document.getElementById("answer").value
+    .toLowerCase()
+    .trim();
 
-    const result = document.getElementById("result");
+  const result = document.getElementById("result");
 
-    if (input.includes("pineapple")) {
-      result.innerHTML =
-        "Correct 🍕 Humanity is safe.<br><br>" +
-        "<strong>WhatsApp:</strong> +91 83569 57415";
-    } else if (input.length === 0) {
-      result.innerHTML =
-        "At least take a guess 😅";
-    } else {
-      result.innerHTML =
-        "Interesting choice… but no. Think controversial fruit 👀";
-    }
+  if (input.includes("pineapple")) {
+    result.innerHTML =
+      "Correct 🍕 Humanity is safe.<br><br>" +
+      "<strong>WhatsApp:</strong> +91&nbsp;83569&nbsp;57415";
+  } else if (input.length === 0) {
+    result.textContent = "At least take a guess 😅";
+  } else {
+    result.textContent =
+      "Interesting choice… but no. Think controversial fruit 👀";
   }
+}
+</script>
+
+<script>
+/* Scroll Reveal */
+const reveals = document.querySelectorAll('.reveal');
+
+const observer = new IntersectionObserver(entries => {
+  entries.forEach(entry => {
+    if (entry.isIntersecting) {
+      entry.target.classList.add('visible');
+      observer.unobserve(entry.target);
+    }
+  });
+}, { threshold: 0.15 });
+
+reveals.forEach(el => observer.observe(el));
+</script>
+
+<script>
+/* Cursor Glow */
+const glow = document.querySelector('.cursor-glow');
+window.addEventListener('mousemove', e => {
+  glow.style.left = e.clientX + 'px';
+  glow.style.top = e.clientY + 'px';
+});
+</script>
+
+<script>
+/* Dev Easter Egg */
+console.log(
+  "%cClear communication beats clever introductions.",
+  "color:#7dd3fc;font-size:15px;font-family:monospace"
+);
 </script>
 
 </body>
