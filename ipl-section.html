@@ -476,9 +476,13 @@ function showApp(){
   document.getElementById('reg-card').style.display='none';
   document.getElementById('ipl-app').style.display='block';
   updBanner();renderFx();renderLB();renderStats();updStrip();
-  const aw=document.getElementById('adm-wrap');
-  aw.innerHTML=G.me==='Divesh Shetty'?buildAdmin():'';
-  if(G.me==='Divesh Shetty')populateAdmSel();
+const aw=document.getElementById('adm-wrap');
+
+if(G.players[G.me]?.name === "Divesh Shetty"){
+  aw.innerHTML = buildAdmin();
+  populateAdmSel();
+} else {
+  aw.innerHTML = '';
 }
 
 function updBanner(){
@@ -619,7 +623,7 @@ function renderLB(){
   }).sort((a,b)=>b.pts-a.pts||b.acc-a.acc);
   const md=['🥇','🥈','🥉'],rc=['g','s','b'];
   el.innerHTML=rows.map((r,i)=>{
-    const isMe = Object.keys(G.players).find(k => k === G.me && G.players[k].name === r.name);
+    const isMe = G.players[G.me]?.name === r.name;
     const sbadge=r.str>1?`<span class="streak-hot">🔥 ${r.str}</span>`:r.str<-1?`<span class="streak-cold">❄️ ${Math.abs(r.str)}</span>`:'';
     return`<div class="lb-row ${isMe?'me':''}">
       <div class="lb-rn ${rc[i]||''}">${md[i]||i+1}</div>
