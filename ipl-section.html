@@ -198,9 +198,7 @@ select.ipl-inp{padding:10px 14px;font-size:.84rem}
   <div class="ipl-card reveal" id="reg-card">
     <h3>🎯 Join the Office League</h3>
     <div class="ipl-row">
-      <input class="ipl-inp" id="rfn" placeholder="First name" maxlength="20" onkeydown="if(event.key==='Enter')join()"/>
-      <input class="ipl-inp" id="rln" placeholder="Last name"  maxlength="20" onkeydown="if(event.key==='Enter')join()"/>
-      <button class="ipl-btn" onclick="join()">Let's Play →</button>
+
       <button class="ipl-btn" onclick="googleLogin()">Sign in with Google</button>
     </div>
     <div id="reg-msg"></div>
@@ -295,25 +293,34 @@ let G={me:null,players:{},results:{},fixtures:[],live:[],filt:'all',atab:'fx'};
 
 // ================= GOOGLE LOGIN =================
 function googleLogin(){
-  const provider=new firebase.auth.GoogleAuthProvider();
+  const provider = new firebase.auth.GoogleAuthProvider();
 
   auth.signInWithPopup(provider).then(async result=>{
-    const user=result.user;
+    const user = result.user;
 
-    const playerData = {
-      name: user.displayName,
-      pts: 0,
-      picks: {},
-      lockedAt: {}
-    };
+    const ref = db.collection("players").doc(user.uid);
+    const doc = await ref.get();
 
-    await db.collection("players").doc(user.uid).set(playerData, {merge:true});
+    // ✅ If user already exists → use existing data
+    if(doc.exists){
+      G.players[user.uid] = doc.data();
+    } 
+    // ✅ If new user → create automatically
+    else{
+      const playerData = {
+        name: user.displayName,
+        pts: 0,
+        picks: {},
+        lockedAt: {}
+      };
 
-    G.players[user.uid] = playerData; // ✅ IMPORTANT
+      await ref.set(playerData);
+      G.players[user.uid] = playerData;
+    }
 
     G.me = user.uid;
 
-    showApp(); // 🔥 IMPORTANT
+    showApp(); // 🚀 DIRECT ENTRY
   });
 }
 
