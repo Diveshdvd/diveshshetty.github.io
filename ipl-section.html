@@ -295,18 +295,18 @@ let G={me:null,players:{},results:{},fixtures:[],live:[],filt:'all',atab:'fx'};
 function googleLogin(){
   const provider = new firebase.auth.GoogleAuthProvider();
 
-  auth.signInWithPopup(provider).then(async result=>{
+  auth.signInWithPopup(provider)
+  .then(async result=>{
+    console.log("✅ LOGIN SUCCESS");
+
     const user = result.user;
 
     const ref = db.collection("players").doc(user.uid);
     const doc = await ref.get();
 
-    // ✅ If user already exists → use existing data
     if(doc.exists){
       G.players[user.uid] = doc.data();
-    } 
-    // ✅ If new user → create automatically
-    else{
+    } else {
       const playerData = {
         name: user.displayName,
         pts: 0,
@@ -320,7 +320,12 @@ function googleLogin(){
 
     G.me = user.uid;
 
-    showApp(); // 🚀 DIRECT ENTRY
+    console.log("🚀 SHOWING APP");
+    showApp();
+  })
+  .catch(err=>{
+    console.error("❌ LOGIN ERROR:", err);
+    alert("Login failed: " + err.message);
   });
 }
 
@@ -425,49 +430,14 @@ function renderChips(){
 }
 
 function quickJoin(name){
-  const p=name.split(' ');
-  document.getElementById('rfn').value=p[0]||'';
-  document.getElementById('rln').value=p.slice(1).join(' ')||'';
-  join();
+ alert("Please use Google Login");
 }
 
-async function join(){
-  const fn=document.getElementById('rfn').value.trim();
-  const ln=document.getElementById('rln').value.trim();
-  const msg=document.getElementById('reg-msg');
-
-  if(!fn||!ln){
-    msg.innerHTML='<div class="ipl-msg err">Please enter both first and last name.</div>';
-    return;
-  }
-
-  const name = `${fn} ${ln}`;
-
-  const user = await auth.signInAnonymously();
-  const uid = user.user.uid;
-
-  const playerData = {
-    name: name,
-    pts: 0,
-    picks: {},
-    lockedAt: {}
-  };
-
-  await db.collection("players").doc(uid).set(playerData);
-
-  // ✅ IMPORTANT
-  G.players[uid] = playerData;
-
-  G.me = uid;
-
-  showApp(); // 🔥 THIS WAS MISSING
-}
 
 function sw(){
   G.me=null;
   document.getElementById('ipl-app').style.display='none';
   document.getElementById('reg-card').style.display='block';
-  document.getElementById('rfn').value='';document.getElementById('rln').value='';
   document.getElementById('reg-msg').innerHTML='';
   renderChips();
 }
@@ -475,28 +445,40 @@ function sw(){
 function showApp(){
   document.getElementById('reg-card').style.display='none';
   document.getElementById('ipl-app').style.display='block';
-  updBanner();renderFx();renderLB();renderStats();updStrip();
-const aw=document.getElementById('adm-wrap');
 
-if(G.players[G.me]?.name === "Divesh Shetty"){
-  aw.innerHTML = buildAdmin();
-  populateAdmSel();
-} else {
-  aw.innerHTML = '';
+  updBanner();
+  renderFx();
+  renderLB();
+  renderStats();
+  updStrip();
+
+  const aw=document.getElementById('adm-wrap');
+
+  if(G.players[G.me]?.name === "Divesh Shetty"){
+    aw.innerHTML = buildAdmin();
+    populateAdmSel();
+  } else {
+    aw.innerHTML = '';
+  }
 }
+
 
 function updBanner(){
   const p=G.players[G.me];
   document.getElementById('ab-n').textContent = G.players[G.me].name;
   document.getElementById('ab-p').textContent=p.pts;
+
   const picks=Object.keys(p.picks||{}).length;
   const decided=Object.keys(G.results).filter(id=>p.picks&&p.picks[id]);
   const correct=decided.filter(id=>p.picks[id]===G.results[id]).length;
   const str=streak(p);
+
   document.getElementById('ab-mini').innerHTML=`
     <div class="ab-mini"><div class="mv">${picks}</div><div class="ml">Picks</div></div>
     <div class="ab-mini"><div class="mv">${correct}</div><div class="ml">Correct</div></div>
-    <div class="ab-mini"><div class="mv" style="color:${str>0?'#4ade80':str<0?'#f87171':'var(--muted)'}">${str>0?'🔥'+str:str<0?'❄️'+Math.abs(str):'—'}</div><div class="ml">Streak</div></div>`;
+    <div class="ab-mini"><div class="mv" style="color:${str>0?'#4ade80':str<0?'#f87171':'var(--muted)'}">
+      ${str>0?'🔥'+str:str<0?'❄️'+Math.abs(str):'—'}
+    </div><div class="ml">Streak</div></div>`;
 }
 
 function streak(p){
