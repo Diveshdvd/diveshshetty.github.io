@@ -59,7 +59,10 @@ fbDb.enablePersistence({ synchronizeTabs: true }).catch(() => {});
   --ipl-radius: 16px;
   --ipl-radius-sm: 10px;
 }
-
+body {
+  background: radial-gradient(circle at 20% 30%, #1a1f3a, #080c1a 60%);
+  background-attachment: fixed;
+}
 .ipl-wrap { max-width: 860px; margin-inline: auto; padding: 0 20px 120px; font-family: 'DM Sans', system-ui, sans-serif; }
 
 /* Divider */
@@ -129,7 +132,82 @@ fbDb.enablePersistence({ synchronizeTabs: true }).catch(() => {});
 .ipl-tabs { display: flex; gap: 3px; background: rgba(0,0,0,.3); border-radius: var(--ipl-radius-sm); padding: 4px; margin-bottom: 28px; }
 .ipl-tab { flex: 1; padding: 10px 8px; text-align: center; border-radius: 8px; cursor: pointer; font-size: .8rem; font-weight: 500; color: var(--ipl-muted2); transition: all .2s; }
 .ipl-tab.on { background: rgba(245,158,11,.15); color: var(--ipl-gold); border: 1px solid rgba(245,158,11,.2); }
+.ipl-btn, .ipl-gbtn {
+  position: relative;
+  overflow: hidden;
+}
 
+.ipl-btn::after,
+.ipl-gbtn::after {
+  content: '';
+  position: absolute;
+  width: 0;
+  height: 0;
+  background: rgba(255,255,255,.3);
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  opacity: 0;
+}
+
+.ipl-btn:active::after,
+.ipl-gbtn:active::after {
+  width: 200px;
+  height: 200px;
+  opacity: 1;
+  transition: 0s;
+}
+
+.ipl-btn::after,
+.ipl-gbtn::after {
+  transition: width .4s ease, height .4s ease, opacity .8s;
+}
+.ipl-fx:hover,
+.ipl-card:hover {
+  transform: translateY(-4px) scale(1.01);
+}
+.ipl-team-btn.picked {
+  box-shadow: 0 0 15px rgba(245,158,11,.4);
+}
+
+.ipl-team-btn.correct {
+  box-shadow: 0 0 18px rgba(34,197,94,.5);
+}
+
+.ipl-team-btn.wrong {
+  box-shadow: 0 0 10px rgba(239,68,68,.3);
+}
+.ipl-live-pulse {
+  box-shadow: 0 0 8px var(--ipl-green), 0 0 16px var(--ipl-green);
+}
+.reveal {
+  opacity: 0;
+  transform: translateY(20px);
+  animation: revealUp .6s ease forwards;
+}
+.ipl-lb-row:nth-child(1) {
+  box-shadow: 0 0 20px rgba(251,191,36,.4);
+}
+.ipl-lb-row:nth-child(2) {
+  box-shadow: 0 0 15px rgba(203,213,225,.3);
+}
+.ipl-lb-row:nth-child(3) {
+  box-shadow: 0 0 12px rgba(217,119,6,.3);
+}
+.ipl-team-btn:active {
+  transform: scale(0.96);
+}
+.ipl-card {
+  border: 1px solid transparent;
+  background:
+    linear-gradient(#080c1a, #080c1a) padding-box,
+    linear-gradient(135deg, rgba(245,158,11,.3), rgba(234,88,12,.2)) border-box;
+}
+@keyframes revealUp {
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
 /* Filter chips */
 .ipl-filters { display: flex; gap: 7px; margin-bottom: 20px; flex-wrap: wrap; }
 .ipl-fc { padding: 5px 14px; border-radius: 100px; border: 1px solid var(--ipl-border); background: transparent; color: var(--ipl-muted2); font-size: .74rem; cursor: pointer; font-family: inherit; transition: all .2s; }
@@ -186,6 +264,28 @@ fbDb.enablePersistence({ synchronizeTabs: true }).catch(() => {});
 .ipl-fd.W { background: var(--ipl-green); }
 .ipl-fd.L { background: #ef444499; }
 
+/* Global premium glow */
+.ipl-card,
+.ipl-fx,
+.ipl-lb-row {
+  box-shadow:
+    0 0 0 1px rgba(255,255,255,.05),
+    0 10px 40px rgba(0,0,0,.6),
+    inset 0 0 20px rgba(255,255,255,.02);
+}
+
+/* Gold glow accents */
+.ipl-banner-pts,
+.ipl-tile-val {
+  text-shadow: 0 0 12px rgba(245,158,11,.6);
+}
+
+/* Hero glow */
+.ipl-hero-title {
+  text-shadow:
+    0 0 20px rgba(245,158,11,.4),
+    0 0 40px rgba(234,88,12,.2);
+}
 /* Inline live score on fixture */
 .ipl-fx-live { margin-top: 12px; padding: 10px 14px; background: rgba(34,197,94,.05); border: 1px solid rgba(34,197,94,.18); border-radius: 8px; font-size: .78rem; }
 .ipl-fx-live-lbl { display: inline-flex; align-items: center; gap: 5px; color: var(--ipl-green); font-weight: 700; font-size: .66rem; letter-spacing: .1em; text-transform: uppercase; margin-bottom: 5px; }
@@ -262,6 +362,133 @@ fbDb.enablePersistence({ synchronizeTabs: true }).catch(() => {});
   .ipl-banner { grid-template-columns: 1fr; text-align: center; }
   .ipl-banner-stats { justify-content: center; }
   .ipl-card { padding: 20px 16px; }
+}
+/* ───────── MOBILE OPTIMIZATION ───────── */
+@media (max-width: 768px) {
+
+  /* Container padding */
+  .ipl-wrap {
+    padding: 0 14px 80px;
+  }
+
+  /* Hero */
+  .ipl-hero-title {
+    font-size: 2.4rem;
+    line-height: 1.1;
+  }
+
+  .ipl-hero-desc {
+    font-size: 0.85rem;
+    padding: 0 10px;
+  }
+
+  /* Stats tiles */
+  .ipl-strip {
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+
+  .ipl-tile {
+    padding: 14px 10px;
+  }
+
+  .ipl-tile-val {
+    font-size: 1.6rem;
+  }
+
+  /* Cards */
+  .ipl-card {
+    padding: 18px 14px;
+  }
+
+  /* Banner */
+  .ipl-banner {
+    grid-template-columns: 1fr;
+    text-align: center;
+    gap: 12px;
+    padding: 16px;
+  }
+
+  .ipl-banner-pts {
+    font-size: 2.2rem;
+  }
+
+  /* Tabs */
+  .ipl-tabs {
+    flex-wrap: wrap;
+  }
+
+  .ipl-tab {
+    font-size: 0.75rem;
+    padding: 8px;
+  }
+
+  /* Fixture cards */
+  .ipl-fx {
+    padding: 16px 14px;
+  }
+
+  .ipl-fx-top {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
+  }
+
+  /* Teams (BIG FIX) */
+  .ipl-teams {
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .ipl-team-btn {
+    flex-direction: row;
+    justify-content: space-between;
+    padding: 12px;
+  }
+
+  .ipl-tlogo,
+  .ipl-tplc {
+    width: 36px;
+    height: 36px;
+  }
+
+  .ipl-tshort {
+    font-size: 1rem;
+  }
+
+  .ipl-tfull {
+    font-size: 0.6rem;
+  }
+
+  .ipl-vs {
+    display: none;
+  }
+
+  /* Leaderboard */
+  .ipl-lb-row {
+    padding: 12px 14px;
+    gap: 10px;
+  }
+
+  .ipl-lb-name {
+    font-size: 0.85rem;
+  }
+
+  .ipl-lb-pts {
+    font-size: 1.4rem;
+  }
+
+  /* Buttons (touch friendly) */
+  .ipl-btn,
+  .ipl-gbtn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  /* Modal */
+  #ipl-confirm-modal div {
+    width: 90%;
+  }
 }
 </style>
 
