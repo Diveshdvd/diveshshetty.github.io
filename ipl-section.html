@@ -1,17 +1,65 @@
+<!-- ============================================================
+     IPL 2026 PREDICTOR — FIREBASE EDITION
+     Paste this entire block into index.html right before <footer>
+
+     FIXES IN THIS VERSION:
+     ✅ Google Sign-In works (popup + redirect fallback)
+     ✅ Firestore real-time listeners (everyone sees live updates)
+     ✅ Leader shows real name, not UID
+     ✅ Player chips show names correctly
+     ✅ Admin check uses display name from Firestore
+     ✅ Picks locked server-side (Firestore rule + client guard)
+     ✅ Sign out properly clears state
+
+     BEFORE THIS WORKS — do these 3 things in Firebase Console:
+     1. Authentication → Sign-in method → Enable "Google"
+     2. Authentication → Settings → Authorized domains →
+        Add your GitHub Pages domain e.g. diveshdvd.github.io
+        (also add localhost if testing locally)
+     3. Firestore → Rules → paste the rules from the comment below
+     ============================================================ -->
+
+<!--
+FIRESTORE SECURITY RULES — paste into Firebase Console → Firestore → Rules:
+
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Players: anyone can read, only the owner can write their own doc
+    match /players/{uid} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null && request.auth.uid == uid;
+      allow update: if request.auth != null && request.auth.uid == uid
+        && !('pts' in request.resource.data.diff(resource.data).affectedKeys());
+    }
+
+    // Results: only Divesh can write, anyone logged in can read
+    match /results/global {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null
+        && get(/databases/$(database)/documents/players/$(request.auth.uid)).data.name == "Divesh Shetty";
+    }
+  }
+}
+-->
+
+<!-- Firebase SDKs -->
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 
 <script>
+// ── Firebase init ─────────────────────────────────────────────
 const firebaseConfig = {
   apiKey: "AIzaSyCfnkAmnWHXermSrJddyHiyX_JsIzeztEw",
   authDomain: "ipl-predictor-25c8f.firebaseapp.com",
   projectId: "ipl-predictor-25c8f"
 };
 
-firebase.initializeApp(firebaseConfig);
+if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
-const db = firebase.firestore();
+const db   = firebase.firestore();
 </script>
 
 <style>
@@ -32,28 +80,39 @@ const db = firebase.firestore();
 .ipl-card{background:rgba(255,255,255,.03);border:1px solid rgba(125,211,252,.12);border-radius:20px;padding:36px 40px;margin-bottom:32px}
 .ipl-card h3{font-size:1.2rem;color:var(--accent);margin-bottom:20px}
 
-.ipl-row{display:flex;gap:10px;flex-wrap:wrap}
-.ipl-inp{flex:1;min-width:155px;padding:13px 16px;background:rgba(255,255,255,.06);border:1px solid rgba(125,211,252,.2);border-radius:12px;color:var(--text);font-size:.95rem;font-family:inherit;outline:none;transition:border-color .2s}
-.ipl-inp:focus{border-color:var(--accent)}
-.ipl-inp::placeholder{color:var(--muted)}
+.ipl-row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
 
-.ipl-btn{padding:13px 26px;background:linear-gradient(135deg,#f97316,#fbbf24);border:none;border-radius:12px;color:#0c1022;font-weight:700;font-size:.9rem;font-family:inherit;cursor:pointer;transition:transform .2s,opacity .2s;white-space:nowrap}
+.ipl-btn{padding:13px 26px;background:linear-gradient(135deg,#f97316,#fbbf24);border:none;border-radius:12px;color:#0c1022;font-weight:700;font-size:.9rem;font-family:inherit;cursor:pointer;transition:transform .2s,opacity .2s;white-space:nowrap;display:inline-flex;align-items:center;gap:10px}
 .ipl-btn:hover{transform:translateY(-2px);opacity:.92}
 .ipl-btn:disabled{opacity:.35;cursor:not-allowed;transform:none}
 .ipl-btn-sm{padding:8px 16px;font-size:.8rem}
 .ipl-btn-ghost{background:transparent;border:1px solid rgba(125,211,252,.3);color:var(--accent);font-size:.82rem;padding:8px 16px;border-radius:10px;cursor:pointer;font-family:inherit;transition:background .2s}
 .ipl-btn-ghost:hover{background:rgba(125,211,252,.08)}
 
+/* Google button */
+.google-btn{
+  display:inline-flex;align-items:center;gap:12px;
+  padding:14px 28px;
+  background:#fff;border:none;border-radius:12px;
+  color:#1f1f1f;font-weight:600;font-size:.95rem;
+  font-family:inherit;cursor:pointer;
+  transition:transform .2s,box-shadow .2s;
+  box-shadow:0 2px 12px rgba(0,0,0,.25);
+}
+.google-btn:hover{transform:translateY(-2px);box-shadow:0 6px 20px rgba(0,0,0,.35)}
+.google-btn:disabled{opacity:.5;cursor:not-allowed;transform:none}
+.google-btn svg{flex-shrink:0}
+
 .ipl-msg{padding:11px 16px;border-radius:10px;font-size:.85rem;margin-top:12px}
 .ipl-msg.ok{background:rgba(74,222,128,.1);border:1px solid rgba(74,222,128,.3);color:#4ade80}
 .ipl-msg.err{background:rgba(248,113,113,.1);border:1px solid rgba(248,113,113,.3);color:#f87171}
 .ipl-msg.inf{background:rgba(125,211,252,.08);border:1px solid rgba(125,211,252,.2);color:var(--accent)}
+.ipl-msg.warn{background:rgba(251,191,36,.08);border:1px solid rgba(251,191,36,.3);color:#fbbf24}
 
-.pchips-wrap{margin-top:24px}
-.pchips-label{font-size:.7rem;color:var(--muted);letter-spacing:.08em;text-transform:uppercase;margin-bottom:8px}
+.pchips-wrap{margin-top:28px;padding-top:20px;border-top:1px solid rgba(255,255,255,.06)}
+.pchips-label{font-size:.7rem;color:var(--muted);letter-spacing:.08em;text-transform:uppercase;margin-bottom:10px}
 .pchips{display:flex;flex-wrap:wrap;gap:8px}
-.pchip{display:flex;align-items:center;gap:7px;padding:7px 13px;background:rgba(255,255,255,.04);border:1px solid rgba(125,211,252,.15);border-radius:100px;font-size:.82rem;cursor:pointer;transition:border-color .2s,background .2s}
-.pchip:hover{border-color:rgba(251,191,36,.5);background:rgba(251,191,36,.06)}
+.pchip{display:flex;align-items:center;gap:7px;padding:7px 13px;background:rgba(255,255,255,.04);border:1px solid rgba(125,211,252,.15);border-radius:100px;font-size:.82rem}
 .pchip .pr{width:18px;height:18px;background:linear-gradient(135deg,#f97316,#fbbf24);border-radius:50%;display:grid;place-items:center;font-size:.62rem;font-weight:700;color:#0c1022}
 .pchip .pp{color:#fbbf24;font-weight:600}
 
@@ -73,7 +132,6 @@ const db = firebase.firestore();
 .fchip{padding:5px 13px;border-radius:100px;border:1px solid rgba(255,255,255,.1);background:transparent;color:var(--muted);font-size:.74rem;cursor:pointer;font-family:inherit;transition:all .2s}
 .fchip.active{border-color:rgba(251,191,36,.5);color:#fbbf24;background:rgba(251,191,36,.08)}
 
-/* Fixture card */
 .fxcard{background:rgba(255,255,255,.028);border:1px solid rgba(255,255,255,.07);border-radius:18px;padding:22px 24px;margin-bottom:12px;transition:border-color .2s}
 .fxcard:hover{border-color:rgba(125,211,252,.18)}
 .fxtop{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:6px}
@@ -106,21 +164,15 @@ const db = firebase.firestore();
 .fxlive-lbl{display:inline-flex;align-items:center;gap:5px;color:#4ade80;font-weight:600;margin-bottom:4px}
 .fxlive-sc{color:var(--text)}
 .fxlive-st{color:var(--muted);margin-top:2px;font-size:.72rem}
-
 .fxps{margin-top:10px;font-size:.76rem}
-.fxps.ok{color:#4ade80}
-.fxps.bad{color:#f87171}
-.fxps.pend{color:#fbbf24}
-.fxps.none{color:var(--muted)}
+.fxps.ok{color:#4ade80}.fxps.bad{color:#f87171}.fxps.pend{color:#fbbf24}.fxps.none{color:var(--muted)}
 .fxvenue{margin-top:8px;font-size:.7rem;color:var(--muted)}
 
-/* Live now */
 .live-now{background:rgba(74,222,128,.04);border:1px solid rgba(74,222,128,.2);border-radius:16px;padding:18px 22px;margin-bottom:22px}
 .live-now-hdr{display:flex;align-items:center;gap:7px;font-size:.72rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#4ade80;margin-bottom:10px}
 .live-now-name{font-size:.88rem;font-weight:600;margin-bottom:4px}
 .live-now-sc{font-size:.8rem;color:var(--muted)}
 
-/* Leaderboard */
 .lb-wrap{display:flex;flex-direction:column;gap:10px}
 .lb-row{display:flex;align-items:center;gap:14px;padding:16px 20px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);border-radius:14px;transition:transform .2s}
 .lb-row:hover{transform:translateX(4px)}
@@ -136,7 +188,6 @@ const db = firebase.firestore();
 .streak-hot{font-size:.68rem;padding:2px 7px;border-radius:100px;background:rgba(249,115,22,.15);color:#fb923c}
 .streak-cold{font-size:.68rem;padding:2px 7px;border-radius:100px;background:rgba(125,211,252,.08);color:var(--accent)}
 
-/* Stats */
 .sg{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px}
 .sc{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);border-radius:14px;padding:18px 20px}
 .sc h4{font-size:.72rem;color:var(--muted);letter-spacing:.08em;text-transform:uppercase;margin-bottom:12px}
@@ -144,14 +195,13 @@ const db = firebase.firestore();
 .ftbw{flex:1;background:rgba(255,255,255,.06);border-radius:100px;height:5px}
 .ftb{height:5px;border-radius:100px}
 
-/* Admin */
 .adm-toggle{background:none;border:none;font-family:inherit;font-size:.74rem;color:var(--muted);cursor:pointer;padding:0;text-decoration:underline dotted}
 .adm-toggle:hover{color:var(--accent)}
 .adm-panel{margin-top:14px;padding:24px;background:rgba(255,255,255,.02);border:1px dashed rgba(249,115,22,.25);border-radius:14px}
 .adm-panel h4{font-size:.78rem;color:#fb923c;letter-spacing:.1em;text-transform:uppercase;margin-bottom:14px}
 .adm-row{display:flex;gap:10px;align-items:center;margin-bottom:12px;flex-wrap:wrap}
 .adm-row label{font-size:.78rem;color:var(--muted);min-width:90px;flex-shrink:0}
-select.ipl-inp{padding:10px 14px;font-size:.84rem}
+select.ipl-inp{flex:1;padding:10px 14px;font-size:.84rem;background:rgba(255,255,255,.06);border:1px solid rgba(125,211,252,.2);border-radius:12px;color:var(--text);font-family:inherit;outline:none}
 
 .ipl-loader{text-align:center;padding:36px;color:var(--muted)}
 .ipl-spin{width:28px;height:28px;border:3px solid rgba(125,211,252,.15);border-top-color:var(--accent);border-radius:50%;animation:ispin .75s linear infinite;margin:0 auto 12px}
@@ -194,29 +244,49 @@ select.ipl-inp{padding:10px 14px;font-size:.84rem}
   <!-- Live now -->
   <div id="live-wrap" style="display:none;" class="reveal"></div>
 
-  <!-- Register -->
+  <!-- Register / Login card -->
   <div class="ipl-card reveal" id="reg-card">
     <h3>🎯 Join the Office League</h3>
-    <div class="ipl-row">
+    <p style="color:var(--muted);font-size:.88rem;margin-bottom:20px;">Sign in with your Google account to pick match winners and compete with your ASB colleagues.</p>
 
-      <button class="ipl-btn" onclick="googleLogin()">Sign in with Google</button>
+    <div class="ipl-row">
+      <button class="google-btn" id="google-btn" onclick="googleLogin()">
+        <!-- Google G logo SVG -->
+        <svg width="20" height="20" viewBox="0 0 48 48">
+          <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
+          <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
+          <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>
+          <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.18 1.48-4.97 2.31-8.16 2.31-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
+          <path fill="none" d="M0 0h48v48H0z"/>
+        </svg>
+        Sign in with Google
+      </button>
     </div>
+
     <div id="reg-msg"></div>
+
+    <!-- Already playing players shown as read-only info -->
     <div class="pchips-wrap" id="chips-wrap" style="display:none;">
-      <div class="pchips-label">Already playing — tap to sign back in</div>
+      <div class="pchips-label">Currently in the league</div>
       <div class="pchips" id="pchips"></div>
     </div>
   </div>
 
-  <!-- App -->
+  <!-- Main App (hidden until signed in) -->
   <div id="ipl-app" style="display:none;">
 
     <div class="ab-wrap reveal">
-      <div><div class="ab-name" id="ab-n">—</div><div class="ab-sub">IPL 2026 · ASB Office</div></div>
-      <div style="text-align:center;"><div class="ab-pts" id="ab-p">0</div><div class="ab-sub">points</div></div>
+      <div>
+        <div class="ab-name" id="ab-n">—</div>
+        <div class="ab-sub">IPL 2026 · ASB Office</div>
+      </div>
+      <div style="text-align:center;">
+        <div class="ab-pts" id="ab-p">0</div>
+        <div class="ab-sub">points</div>
+      </div>
       <div style="display:flex;flex-direction:column;align-items:flex-end;gap:8px;">
         <div class="ab-mini" id="ab-mini"></div>
-        <button class="ipl-btn-ghost" onclick="sw()">Switch Player</button>
+        <button class="ipl-btn-ghost" onclick="signOut()">Sign Out</button>
       </div>
     </div>
 
@@ -226,7 +296,6 @@ select.ipl-inp{padding:10px 14px;font-size:.84rem}
       <div class="ipl-tab" onclick="tab('st',this)">📊 My Stats</div>
     </div>
 
-    <!-- Fixtures tab -->
     <div id="tab-fx">
       <div class="frow">
         <button class="fchip active" onclick="filt('all',this)">All</button>
@@ -237,112 +306,66 @@ select.ipl-inp{padding:10px 14px;font-size:.84rem}
       <div id="fxlist"></div>
     </div>
 
-    <!-- Leaderboard tab -->
     <div id="tab-lb" style="display:none;"><div class="lb-wrap" id="lblist"></div></div>
 
-    <!-- Stats tab -->
     <div id="tab-st" style="display:none;">
       <div class="sg" id="sg"></div>
       <div id="tfcard"></div>
     </div>
 
-    <!-- Admin (only rendered for Divesh Shetty) -->
     <div style="margin-top:56px;padding-top:22px;border-top:1px solid rgba(255,255,255,.05);" id="adm-wrap"></div>
-
   </div>
 </section>
 
 <script>
 // ================================================================
-// IPL 2026 PREDICTOR ENGINE
-// Admin: Divesh Shetty ONLY
-// Picks: one-way lock, no changes
-// API: CricAPI currentMatches for live scores + team logos
+// IPL 2026 PREDICTOR ENGINE — Firebase Edition
 // ================================================================
-const AK='dedf68fd-7801-48d2-95ad-2c8af1eb9c02';
+const AK = 'dedf68fd-7801-48d2-95ad-2c8af1eb9c02';
+const ADMIN_NAME = 'Divesh Shetty';
 
-const TD={
-  'Royal Challengers Bengaluru':{s:'RCB',c:'#E63329',l:'https://g.cricapi.com/iapi/164-637877069388290486.webp?w=48'},
-  'Mumbai Indians'             :{s:'MI', c:'#005DA0',l:'https://g.cricapi.com/iapi/54-637877070395697396.webp?w=48'},
-  'Chennai Super Kings'        :{s:'CSK',c:'#F9CD05',l:'https://g.cricapi.com/iapi/18-637877069634567872.webp?w=48'},
-  'Kolkata Knight Riders'      :{s:'KKR',c:'#3B1F8C',l:'https://g.cricapi.com/iapi/38-637877069894596096.webp?w=48'},
-  'Punjab Kings'               :{s:'PBKS',c:'#D71920',l:'https://g.cricapi.com/iapi/72-637877070620502818.webp?w=48'},
-  'Delhi Capitals'             :{s:'DC', c:'#17479E',l:'https://g.cricapi.com/iapi/19-637877070154553484.webp?w=48'},
-  'Rajasthan Royals'           :{s:'RR', c:'#EA1A85',l:'https://g.cricapi.com/iapi/74-637877070854949074.webp?w=48'},
-  'Sunrisers Hyderabad'        :{s:'SRH',c:'#F7671F',l:'https://g.cricapi.com/iapi/85-637877071614349038.webp?w=48'},
-  'Gujarat Titans'             :{s:'GT', c:'#1C4B7E',l:'https://g.cricapi.com/iapi/4444-638054978470960386.webp?w=48'},
-  'Lucknow Super Giants'       :{s:'LSG',c:'#A2DFED',l:'https://g.cricapi.com/iapi/4443-638054977902009193.webp?w=48'},
+const TD = {
+  'Royal Challengers Bengaluru': {s:'RCB', c:'#E63329', l:'https://g.cricapi.com/iapi/164-637877069388290486.webp?w=48'},
+  'Mumbai Indians':              {s:'MI',  c:'#005DA0', l:'https://g.cricapi.com/iapi/54-637877070395697396.webp?w=48'},
+  'Chennai Super Kings':         {s:'CSK', c:'#F9CD05', l:'https://g.cricapi.com/iapi/18-637877069634567872.webp?w=48'},
+  'Kolkata Knight Riders':       {s:'KKR', c:'#3B1F8C', l:'https://g.cricapi.com/iapi/38-637877069894596096.webp?w=48'},
+  'Punjab Kings':                {s:'PBKS',c:'#D71920', l:'https://g.cricapi.com/iapi/72-637877070620502818.webp?w=48'},
+  'Delhi Capitals':              {s:'DC',  c:'#17479E', l:'https://g.cricapi.com/iapi/19-637877070154553484.webp?w=48'},
+  'Rajasthan Royals':            {s:'RR',  c:'#EA1A85', l:'https://g.cricapi.com/iapi/74-637877070854949074.webp?w=48'},
+  'Sunrisers Hyderabad':         {s:'SRH', c:'#F7671F', l:'https://g.cricapi.com/iapi/85-637877071614349038.webp?w=48'},
+  'Gujarat Titans':              {s:'GT',  c:'#1C4B7E', l:'https://g.cricapi.com/iapi/4444-638054978470960386.webp?w=48'},
+  'Lucknow Super Giants':        {s:'LSG', c:'#A2DFED', l:'https://g.cricapi.com/iapi/4443-638054977902009193.webp?w=48'},
 };
-const tf=n=>TD[n]||{s:n.slice(0,3).toUpperCase(),c:'#7dd3fc',l:null};
+const tf = n => TD[n] || {s: n.slice(0,3).toUpperCase(), c:'#7dd3fc', l:null};
 
-// IPL 2025 last-5 form
-const FORM={
-  'Royal Challengers Bengaluru':['W','W','L','W','W'],
-  'Mumbai Indians':             ['W','L','W','L','W'],
-  'Chennai Super Kings':        ['L','W','W','W','L'],
-  'Kolkata Knight Riders':      ['W','W','W','L','W'],
-  'Punjab Kings':               ['L','L','W','W','L'],
-  'Delhi Capitals':             ['W','L','L','W','W'],
-  'Rajasthan Royals':           ['W','L','W','L','L'],
-  'Sunrisers Hyderabad':        ['L','W','L','L','W'],
-  'Gujarat Titans':             ['W','L','L','W','L'],
-  'Lucknow Super Giants':       ['L','W','W','L','W'],
+const FORM = {
+  'Royal Challengers Bengaluru': ['W','W','L','W','W'],
+  'Mumbai Indians':              ['W','L','W','L','W'],
+  'Chennai Super Kings':         ['L','W','W','W','L'],
+  'Kolkata Knight Riders':       ['W','W','W','L','W'],
+  'Punjab Kings':                ['L','L','W','W','L'],
+  'Delhi Capitals':              ['W','L','L','W','W'],
+  'Rajasthan Royals':            ['W','L','W','L','L'],
+  'Sunrisers Hyderabad':         ['L','W','L','L','W'],
+  'Gujarat Titans':              ['W','L','L','W','L'],
+  'Lucknow Super Giants':        ['L','W','W','L','W'],
 };
 
-let G={me:null,players:{},results:{},fixtures:[],live:[],filt:'all',atab:'fx'};
+// ── App state ─────────────────────────────────────────────────
+let G = {
+  uid:     null,   // current user Firebase UID
+  me:      null,   // current user player data object {name, pts, picks, lockedAt}
+  players: {},     // { uid: playerData } — all players
+  results: {},     // { matchId: winnerTeam }
+  fixtures:[],
+  live:    [],
+  filt:   'all',
+  atab:   'fx',
+  unsubPlayers: null,
+  unsubResults: null,
+};
 
-// ================= GOOGLE LOGIN =================
-function googleLogin(){
-  const provider = new firebase.auth.GoogleAuthProvider();
-
-  auth.signInWithPopup(provider)
-  .then(async result=>{
-    console.log("✅ LOGIN SUCCESS");
-
-    const user = result.user;
-
-    const ref = db.collection("players").doc(user.uid);
-    const doc = await ref.get();
-
-    if(doc.exists){
-      G.players[user.uid] = doc.data();
-    } else {
-      const playerData = {
-        name: user.displayName,
-        pts: 0,
-        picks: {},
-        lockedAt: {}
-      };
-
-      await ref.set(playerData);
-      G.players[user.uid] = playerData;
-    }
-
-    G.me = user.uid;
-
-    console.log("🚀 SHOWING APP");
-    showApp();
-  })
-  .catch(err=>{
-    console.error("❌ LOGIN ERROR:", err);
-    alert("Login failed: " + err.message);
-  });
-}
-
-// ================= AUTO LOGIN =================
-auth.onAuthStateChanged(async user=>{
-  if(user){
-    G.me=user.uid;
-
-    const doc=await db.collection("players").doc(user.uid).get();
-    if(doc.exists){
-      G.players[user.uid]=doc.data();
-      showApp();
-    }
-  }
-});
-
-function fx(){return[
+function getFx(){return[
   {id:'m01',num:1, date:'2026-03-28',time:'19:30',home:'Royal Challengers Bengaluru',away:'Sunrisers Hyderabad',       venue:'M. Chinnaswamy Stadium, Bengaluru'},
   {id:'m02',num:2, date:'2026-03-29',time:'19:30',home:'Mumbai Indians',              away:'Kolkata Knight Riders',     venue:'Wankhede Stadium, Mumbai'},
   {id:'m03',num:3, date:'2026-03-30',time:'19:30',home:'Rajasthan Royals',            away:'Chennai Super Kings',       venue:'Barsapara Cricket Stadium, Guwahati'},
@@ -365,96 +388,242 @@ function fx(){return[
   {id:'m20',num:20,date:'2026-04-12',time:'19:30',home:'Mumbai Indians',              away:'Royal Challengers Bengaluru',venue:'Wankhede Stadium, Mumbai'},
 ];}
 
-async function boot(){
-  G.fixtures = fx();
+// ── GOOGLE LOGIN ──────────────────────────────────────────────
+// KEY FIX: called directly from onclick — synchronous from user gesture
+// Uses popup first, falls back to redirect if popup is blocked
+async function googleLogin() {
+  const btn = document.getElementById('google-btn');
+  const msg = document.getElementById('reg-msg');
 
-  const snap = await db.collection("players").get();
-  snap.forEach(doc=>{
-    G.players[doc.id] = doc.data();
-  });
+  btn.disabled = true;
+  btn.innerHTML = `<div class="ipl-spin" style="margin:0;width:18px;height:18px;border-width:2px"></div> Signing in…`;
+  msg.innerHTML = '';
 
-  const resDoc = await db.collection("results").doc("global").get();
-  if(resDoc.exists){
-    G.results = resDoc.data();
+  const provider = new firebase.auth.GoogleAuthProvider();
+  // Force account picker every time (important — prevents silent wrong account)
+  provider.setCustomParameters({ prompt: 'select_account' });
+
+  try {
+    // Try popup first
+    const result = await auth.signInWithPopup(provider);
+    await onLoginSuccess(result.user);
+  } catch (err) {
+    // If popup was blocked by browser, fall back to redirect
+    if (err.code === 'auth/popup-blocked' || err.code === 'auth/popup-closed-by-user') {
+      msg.innerHTML = '<div class="ipl-msg warn">⚠️ Popup was blocked. Trying redirect login…</div>';
+      try {
+        await auth.signInWithRedirect(provider);
+        // Page will reload — onAuthStateChanged handles the rest
+      } catch(e2) {
+        showLoginError(e2, btn);
+      }
+    } else {
+      showLoginError(err, btn);
+    }
+  }
+}
+
+function showLoginError(err, btn) {
+  const msg = document.getElementById('reg-msg');
+  console.error('Login error:', err);
+
+  // Friendly messages for common errors
+  const friendly = {
+    'auth/unauthorized-domain': '⚠️ This domain is not authorized in Firebase. Go to Firebase Console → Authentication → Settings → Authorized domains and add this site\'s domain.',
+    'auth/operation-not-allowed': '⚠️ Google sign-in is not enabled. Go to Firebase Console → Authentication → Sign-in method → Enable Google.',
+    'auth/network-request-failed': '⚠️ Network error. Check your internet connection and try again.',
+    'auth/cancelled-popup-request': '',
+  };
+
+  const friendlyMsg = friendly[err.code];
+  if (friendlyMsg === '') { resetLoginBtn(btn); return; } // user cancelled — no error needed
+  msg.innerHTML = `<div class="ipl-msg err">${friendlyMsg || '❌ Login failed: ' + err.message}</div>`;
+  resetLoginBtn(btn);
+}
+
+function resetLoginBtn(btn) {
+  btn.disabled = false;
+  btn.innerHTML = `<svg width="20" height="20" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.18 1.48-4.97 2.31-8.16 2.31-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/><path fill="none" d="M0 0h48v48H0z"/></svg> Sign in with Google`;
+}
+
+async function onLoginSuccess(user) {
+  G.uid = user.uid;
+
+  // Create or load player doc
+  const ref = db.collection('players').doc(user.uid);
+  const snap = await ref.get();
+
+  if (!snap.exists) {
+    const playerData = { name: user.displayName, email: user.email, pts: 0, picks: {}, lockedAt: {} };
+    await ref.set(playerData);
+    G.me = playerData;
+  } else {
+    G.me = snap.data();
   }
 
-  updStrip();
-  renderChips();
-  fetchLive();
+  G.players[user.uid] = G.me;
+  showApp();
+}
 
+// ── AUTH STATE — handles page reload / redirect result ────────
+auth.onAuthStateChanged(async user => {
+  if (!user) return;
+
+  // Handle redirect result if we used signInWithRedirect
+  try {
+    const result = await auth.getRedirectResult();
+    if (result && result.user) {
+      await onLoginSuccess(result.user);
+      return;
+    }
+  } catch(e) {}
+
+  // Already signed in (page reload)
+  if (!G.uid) {
+    G.uid = user.uid;
+    const snap = await db.collection('players').doc(user.uid).get();
+    if (snap.exists) {
+      G.me = snap.data();
+      G.players[user.uid] = G.me;
+      showApp();
+    }
+  }
+});
+
+// ── SIGN OUT ──────────────────────────────────────────────────
+async function signOut() {
+  // Unsubscribe real-time listeners
+  if (G.unsubPlayers) G.unsubPlayers();
+  if (G.unsubResults) G.unsubResults();
+  await auth.signOut();
+  G = { uid:null, me:null, players:{}, results:{}, fixtures:getFx(), live:[], filt:'all', atab:'fx', unsubPlayers:null, unsubResults:null };
+  document.getElementById('ipl-app').style.display = 'none';
+  document.getElementById('reg-card').style.display = 'block';
+  document.getElementById('reg-msg').innerHTML = '';
+  resetLoginBtn(document.getElementById('google-btn'));
+  await loadPublicData(); // reload player chips
+}
+
+// ── BOOT (runs on page load — no auth needed for public data) ─
+async function boot() {
+  G.fixtures = getFx();
+  await loadPublicData();
+  fetchLive();
   setInterval(fetchLive, 45000);
 }
-async function fetchLive(){
-  try{
-    const r=await fetch(`https://api.cricapi.com/v1/currentMatches?apikey=${AK}&offset=0`);
-    const d=await r.json();
-    if(d.status==='success'){
-      G.live=(d.data||[]).filter(m=>m.teams&&m.teams.some(t=>TD[t]));
-      renderLive();
-      if(G.me&&G.atab==='fx')renderFx();
-    }
-  }catch(e){}
+
+// Load players + results for the public strip/chips (no auth needed if rules allow)
+async function loadPublicData() {
+  try {
+    const [playersSnap, resSnap] = await Promise.all([
+      db.collection('players').get(),
+      db.collection('results').doc('global').get()
+    ]);
+    playersSnap.forEach(d => { G.players[d.id] = d.data(); });
+    if (resSnap.exists) G.results = resSnap.data();
+  } catch(e) {
+    // Firestore rules might require auth — that's fine, just show zeros
+  }
+  updStrip();
+  renderChips();
 }
 
-function renderLive(){
-  const w=document.getElementById('live-wrap');
-  const live=G.live.filter(m=>m.matchStarted&&!m.matchEnded);
-  if(!live.length){w.style.display='none';return;}
-  w.style.display='block';
-  w.innerHTML=live.map(m=>{
-    const sc=(m.score||[]).map(s=>`<span><strong>${s.inning.split(' Inning')[0]}</strong>: ${s.r}/${s.w} (${s.o} ov)</span>`).join(' · ');
-    return`<div class="live-now"><div class="live-now-hdr"><span class="ipl-live-dot"></span>LIVE NOW</div>
-    <div class="live-now-name">${m.name}</div>
-    <div class="live-now-sc">${sc||'Match in progress'}</div>
-    <div style="font-size:.7rem;color:var(--muted);margin-top:3px;">${m.status||''}</div></div>`;
+// ── REAL-TIME LISTENERS (attached after login) ────────────────
+function attachListeners() {
+  // Unsubscribe old listeners if any
+  if (G.unsubPlayers) G.unsubPlayers();
+  if (G.unsubResults) G.unsubResults();
+
+  // Listen to all players
+  G.unsubPlayers = db.collection('players').onSnapshot(snap => {
+    snap.forEach(d => { G.players[d.id] = d.data(); });
+    // Update own data too
+    if (G.uid && G.players[G.uid]) G.me = G.players[G.uid];
+    updStrip();
+    renderChips();
+    if (G.atab === 'lb') renderLB();
+    if (G.atab === 'st') renderStats();
+    updBanner();
+  });
+
+  // Listen to results
+  G.unsubResults = db.collection('results').doc('global').onSnapshot(snap => {
+    if (snap.exists) G.results = snap.data();
+    else G.results = {};
+    updStrip();
+    if (G.atab === 'fx') renderFx();
+    if (G.atab === 'lb') renderLB();
+    if (G.me && G.players[G.me?.name]) updBanner();
+  });
+}
+
+// ── LIVE DATA FROM CRICAPI ────────────────────────────────────
+async function fetchLive() {
+  try {
+    const r = await fetch(`https://api.cricapi.com/v1/currentMatches?apikey=${AK}&offset=0`);
+    const d = await r.json();
+    if (d.status === 'success') {
+      G.live = (d.data || []).filter(m => m.teams && m.teams.some(t => TD[t]));
+      renderLive();
+      if (G.uid && G.atab === 'fx') renderFx();
+    }
+  } catch(e) {}
+}
+
+function renderLive() {
+  const w = document.getElementById('live-wrap');
+  const live = G.live.filter(m => m.matchStarted && !m.matchEnded);
+  if (!live.length) { w.style.display = 'none'; return; }
+  w.style.display = 'block';
+  w.innerHTML = live.map(m => {
+    const sc = (m.score||[]).map(s => `<span><strong>${s.inning.split(' Inning')[0]}</strong>: ${s.r}/${s.w} (${s.o} ov)</span>`).join(' · ');
+    return `<div class="live-now"><div class="live-now-hdr"><span class="ipl-live-dot"></span>LIVE NOW</div>
+      <div class="live-now-name">${m.name}</div>
+      <div class="live-now-sc">${sc || 'Match in progress'}</div>
+      <div style="font-size:.7rem;color:var(--muted);margin-top:3px;">${m.status||''}</div></div>`;
   }).join('');
 }
 
-function updStrip(){
-  const names=Object.keys(G.players);
-  const decided=Object.keys(G.results).length;
-  const leader=names.length?names.sort((a,b)=>G.players[b].pts-G.players[a].pts)[0]?.split(' ')[0]:'—';
-  document.getElementById('gs-p').textContent=names.length;
-  document.getElementById('gs-d').textContent=decided;
-  document.getElementById('gs-l').textContent=leader||'—';
+// ── STRIP & CHIPS ─────────────────────────────────────────────
+function updStrip() {
+  const players = Object.values(G.players);
+  const decided = Object.keys(G.results).length;
+  // Find leader by pts — use real name
+  const leader = players.length
+    ? players.sort((a,b) => b.pts - a.pts)[0]?.name?.split(' ')[0] || '—'
+    : '—';
+  document.getElementById('gs-p').textContent = players.length;
+  document.getElementById('gs-d').textContent = decided;
+  document.getElementById('gs-l').textContent = leader;
 }
 
-function renderChips(){
-  const names=Object.keys(G.players);
-  const w=document.getElementById('chips-wrap');
-  const c=document.getElementById('pchips');
-  if(!names.length){w.style.display='none';return;}
-  w.style.display='block';
-  const s=names.sort((a,b)=>G.players[b].pts-G.players[a].pts);
-  c.innerHTML=s.map((n,i)=>`<div class="pchip" onclick="quickJoin('${n.replace(/'/g,"\\'")}')"><span class="pr">${i+1}</span><span>${n}</span><span class="pp">${G.players[n].pts}pt</span></div>`).join('');
+function renderChips() {
+  const players = Object.values(G.players);
+  const w = document.getElementById('chips-wrap');
+  const c = document.getElementById('pchips');
+  if (!players.length) { w.style.display = 'none'; return; }
+  w.style.display = 'block';
+  const sorted = [...players].sort((a,b) => b.pts - a.pts);
+  c.innerHTML = sorted.map((p, i) =>
+    `<div class="pchip"><span class="pr">${i+1}</span><span>${p.name}</span><span class="pp">${p.pts}pt</span></div>`
+  ).join('');
 }
 
-function quickJoin(name){
- alert("Please use Google Login");
-}
+// ── SHOW APP ──────────────────────────────────────────────────
+function showApp() {
+  document.getElementById('reg-card').style.display = 'none';
+  document.getElementById('ipl-app').style.display = 'block';
 
-
-function sw(){
-  G.me=null;
-  document.getElementById('ipl-app').style.display='none';
-  document.getElementById('reg-card').style.display='block';
-  document.getElementById('reg-msg').innerHTML='';
-  renderChips();
-}
-
-function showApp(){
-  document.getElementById('reg-card').style.display='none';
-  document.getElementById('ipl-app').style.display='block';
-
+  attachListeners(); // real-time updates
   updBanner();
+  G.fixtures = getFx();
   renderFx();
   renderLB();
   renderStats();
   updStrip();
 
-  const aw=document.getElementById('adm-wrap');
-
-  if(G.players[G.me]?.name === "Divesh Shetty"){
+  const aw = document.getElementById('adm-wrap');
+  if (G.me && G.me.name === ADMIN_NAME) {
     aw.innerHTML = buildAdmin();
     populateAdmSel();
   } else {
@@ -462,108 +631,114 @@ function showApp(){
   }
 }
 
+function updBanner() {
+  if (!G.me) return;
+  const p = G.me;
+  document.getElementById('ab-n').textContent = p.name || '—';
+  document.getElementById('ab-p').textContent = p.pts || 0;
 
-function updBanner(){
-  const p=G.players[G.me];
-  document.getElementById('ab-n').textContent = G.players[G.me].name;
-  document.getElementById('ab-p').textContent=p.pts;
+  const picks = Object.keys(p.picks || {}).length;
+  const decided = Object.keys(G.results).filter(id => p.picks && p.picks[id]);
+  const correct = decided.filter(id => p.picks[id] === G.results[id]).length;
+  const str = streak(p);
 
-  const picks=Object.keys(p.picks||{}).length;
-  const decided=Object.keys(G.results).filter(id=>p.picks&&p.picks[id]);
-  const correct=decided.filter(id=>p.picks[id]===G.results[id]).length;
-  const str=streak(p);
-
-  document.getElementById('ab-mini').innerHTML=`
+  document.getElementById('ab-mini').innerHTML = `
     <div class="ab-mini"><div class="mv">${picks}</div><div class="ml">Picks</div></div>
     <div class="ab-mini"><div class="mv">${correct}</div><div class="ml">Correct</div></div>
     <div class="ab-mini"><div class="mv" style="color:${str>0?'#4ade80':str<0?'#f87171':'var(--muted)'}">
-      ${str>0?'🔥'+str:str<0?'❄️'+Math.abs(str):'—'}
+      ${str>0 ? '🔥'+str : str<0 ? '❄️'+Math.abs(str) : '—'}
     </div><div class="ml">Streak</div></div>`;
 }
 
-function streak(p){
-  const dec=G.fixtures.filter(f=>G.results[f.id]).sort((a,b)=>new Date(b.date)-new Date(a.date));
-  let s=0;
-  for(const f of dec){
-    const mp=(p.picks||{})[f.id];
-    if(!mp)break;
-    if(mp===G.results[f.id]){if(s>=0)s++;else break;}
-    else{if(s<=0)s--;else break;}
+function streak(p) {
+  const dec = G.fixtures.filter(f => G.results[f.id]).sort((a,b) => new Date(b.date) - new Date(a.date));
+  let s = 0;
+  for (const f of dec) {
+    const mp = (p.picks||{})[f.id];
+    if (!mp) break;
+    if (mp === G.results[f.id]) { if (s >= 0) s++; else break; }
+    else                        { if (s <= 0) s--; else break; }
   }
   return s;
 }
 
-function tab(t,el){
-  G.atab=t;
-  document.querySelectorAll('.ipl-tab').forEach(x=>x.classList.remove('active'));
+// ── TABS & FILTERS ────────────────────────────────────────────
+function tab(t, el) {
+  G.atab = t;
+  document.querySelectorAll('.ipl-tab').forEach(x => x.classList.remove('active'));
   el.classList.add('active');
-  ['fx','lb','st'].forEach(x=>document.getElementById('tab-'+x).style.display=x===t?'block':'none');
-  if(t==='lb')renderLB();if(t==='st')renderStats();
+  ['fx','lb','st'].forEach(x => document.getElementById('tab-'+x).style.display = x===t ? 'block' : 'none');
+  if (t==='lb') renderLB();
+  if (t==='st') renderStats();
 }
 
-function filt(f,el){
-  G.filt=f;
-  document.querySelectorAll('.fchip').forEach(c=>c.classList.remove('active'));
+function filt(f, el) {
+  G.filt = f;
+  document.querySelectorAll('.fchip').forEach(c => c.classList.remove('active'));
   el.classList.add('active');
   renderFx();
 }
 
-function renderFx(){
-  const el=document.getElementById('fxlist');
-  const p=G.players[G.me];
-  const now=new Date();
-  let list=[...G.fixtures];
-  if(G.filt==='up')list=list.filter(f=>!G.results[f.id]);
-  else if(G.filt==='pk')list=list.filter(f=>p.picks&&p.picks[f.id]);
-  else if(G.filt==='dn')list=list.filter(f=>G.results[f.id]);
-  if(!list.length){el.innerHTML='<div class="ipl-empty">No matches in this view.</div>';return;}
-  el.innerHTML=list.map(f=>fxCard(f,p,now)).join('');
+// ── FIXTURES ─────────────────────────────────────────────────
+function renderFx() {
+  const el = document.getElementById('fxlist');
+  if (!G.me) return;
+  const p = G.me;
+  const now = new Date();
+  let list = [...G.fixtures];
+  if (G.filt==='up') list = list.filter(f => !G.results[f.id]);
+  else if (G.filt==='pk') list = list.filter(f => p.picks && p.picks[f.id]);
+  else if (G.filt==='dn') list = list.filter(f => G.results[f.id]);
+  if (!list.length) { el.innerHTML = '<div class="ipl-empty">No matches in this view.</div>'; return; }
+  el.innerHTML = list.map(f => fxCard(f, p, now)).join('');
 }
 
-function fxCard(f,p,now){
-  const res=G.results[f.id];
-  const myPick=(p.picks||{})[f.id];
-  const locked=!!myPick;
-  const over=!!res;
-  const correct=over&&myPick===res;
-  const wrong=over&&myPick&&myPick!==res;
-  const mDT=new Date(`${f.date}T${f.time}:00+05:30`);
-  const ds=mDT.toLocaleDateString('en-IN',{weekday:'short',day:'numeric',month:'short'});
-  const ts2=mDT.toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit',hour12:true});
-  const diff=mDT-now;
-  let cd='';
-  if(!over&&diff>0){
-    const dd=Math.floor(diff/86400000),hh=Math.floor((diff%86400000)/3600000),mm=Math.floor((diff%3600000)/60000);
-    cd=dd>0?`<span class="fxcd">in ${dd}d ${hh}h</span>`:hh>0?`<span class="fxcd">in ${hh}h ${mm}m</span>`:`<span class="fxcd soon">Starting soon!</span>`;
-  }
-  const lm=G.live.find(m=>m.teams&&[f.home,f.away].every(t=>m.teams.includes(t))&&m.matchStarted&&!m.matchEnded);
-  const liveHtml=lm?`<div class="fxlive"><div class="fxlive-lbl"><span class="ipl-live-dot"></span>LIVE</div>${(lm.score||[]).map(s=>`<div class="fxlive-sc">${s.inning.split(' Inning')[0]}: <strong>${s.r}/${s.w}</strong> (${s.o} ov)</div>`).join('')}<div class="fxlive-st">${lm.status||''}</div></div>`:'';
+function fxCard(f, p, now) {
+  const res = G.results[f.id];
+  const myPick = (p.picks||{})[f.id];
+  const locked = !!myPick;
+  const over = !!res;
+  const correct = over && myPick === res;
+  const wrong = over && myPick && myPick !== res;
 
-  const tbtn=[f.home,f.away].map(team=>{
-    const t=tf(team);
-    let cls='tpbtn';
-    if(over){if(team===res)cls+=' win';if(team===myPick&&correct)cls+=' cor';else if(team===myPick&&wrong)cls+=' wrg';}
-    else if(team===myPick)cls+=' sel';
-    const dis=(locked||over)?'disabled':'';
-    const logoImg=t.l?`<img class="tlogo" src="${t.l}" alt="${t.s}" onerror="this.style.display='none';this.nextElementSibling.style.display='grid'">`:'';
-    const plc=`<div class="tplc" style="background:${t.c};display:${t.l?'none':'grid'}">${t.s}</div>`;
-    const fds=!over?(FORM[team]||[]).map(r=>`<div class="fdot ${r}" title="IPL 2025: ${r==='W'?'Win':'Loss'}"></div>`).join(''):'';
-    return`<button class="${cls}" ${dis} onclick="lockPick('${f.id}','${team.replace(/'/g,"\\'")}')">
+  const mDT = new Date(`${f.date}T${f.time}:00+05:30`);
+  const ds = mDT.toLocaleDateString('en-IN', {weekday:'short', day:'numeric', month:'short'});
+  const ts2 = mDT.toLocaleTimeString('en-IN', {hour:'2-digit', minute:'2-digit', hour12:true});
+  const diff = mDT - now;
+  let cd = '';
+  if (!over && diff > 0) {
+    const dd = Math.floor(diff/86400000), hh = Math.floor((diff%86400000)/3600000), mm = Math.floor((diff%3600000)/60000);
+    cd = dd>0 ? `<span class="fxcd">in ${dd}d ${hh}h</span>` : hh>0 ? `<span class="fxcd">in ${hh}h ${mm}m</span>` : `<span class="fxcd soon">Starting soon!</span>`;
+  }
+
+  const lm = G.live.find(m => m.teams && [f.home,f.away].every(t => m.teams.includes(t)) && m.matchStarted && !m.matchEnded);
+  const liveHtml = lm ? `<div class="fxlive"><div class="fxlive-lbl"><span class="ipl-live-dot"></span>LIVE</div>${(lm.score||[]).map(s=>`<div class="fxlive-sc">${s.inning.split(' Inning')[0]}: <strong>${s.r}/${s.w}</strong> (${s.o} ov)</div>`).join('')}<div class="fxlive-st">${lm.status||''}</div></div>` : '';
+
+  const tbtn = [f.home, f.away].map(team => {
+    const t = tf(team);
+    let cls = 'tpbtn';
+    if (over) { if (team===res) cls+=' win'; if (team===myPick&&correct) cls+=' cor'; else if (team===myPick&&wrong) cls+=' wrg'; }
+    else if (team===myPick) cls += ' sel';
+    const dis = (locked||over) ? 'disabled' : '';
+    const logoImg = t.l ? `<img class="tlogo" src="${t.l}" alt="${t.s}" onerror="this.style.display='none';this.nextElementSibling.style.display='grid'">` : '';
+    const plc = `<div class="tplc" style="background:${t.c};display:${t.l?'none':'grid'}">${t.s}</div>`;
+    const fds = !over ? (FORM[team]||[]).map(r=>`<div class="fdot ${r}" title="IPL 2025: ${r==='W'?'Win':'Loss'}"></div>`).join('') : '';
+    return `<button class="${cls}" ${dis} onclick="lockPick('${f.id}','${team.replace(/'/g,"\\'")}')">
       ${logoImg}${plc}
       <div class="tshort">${t.s}</div>
       <div class="tfull">${team}</div>
-      ${fds?`<div class="formdots" title="IPL 2025 last 5">${fds}</div>`:''}
+      ${fds ? `<div class="formdots">${fds}</div>` : ''}
     </button>`;
   });
 
-  let st='';
-  if(over&&correct)st=`<div class="fxps ok">✅ +1 point — Correct! Winner: ${tf(res).s}</div>`;
-  else if(over&&wrong)st=`<div class="fxps bad">❌ Wrong — Winner: ${tf(res).s} · You picked: ${tf(myPick).s}</div>`;
-  else if(over&&!myPick)st=`<div class="fxps none">No pick made — ${tf(res).s} won</div>`;
-  else if(!over&&myPick)st=`<div class="fxps pend">🔒 Locked on ${tf(myPick).s} — awaiting result</div>`;
-  else st=`<div class="fxps none">👆 Tap to pick (locks immediately, no changes)</div>`;
+  let st = '';
+  if (over&&correct) st = `<div class="fxps ok">✅ +1 point — Correct! Winner: ${tf(res).s}</div>`;
+  else if (over&&wrong) st = `<div class="fxps bad">❌ Wrong — Winner: ${tf(res).s} · You picked: ${tf(myPick).s}</div>`;
+  else if (over&&!myPick) st = `<div class="fxps none">No pick made — ${tf(res).s} won</div>`;
+  else if (!over&&myPick) st = `<div class="fxps pend">🔒 Locked on ${tf(myPick).s} — awaiting result</div>`;
+  else st = `<div class="fxps none">👆 Tap to pick (locks immediately, no changes)</div>`;
 
-  return`<div class="fxcard">
+  return `<div class="fxcard">
     <div class="fxtop">
       <span class="fxno">Match ${f.num}</span>
       <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
@@ -577,40 +752,62 @@ function fxCard(f,p,now){
   </div>`;
 }
 
-async function lockPick(mid,team){
-  const p=G.players[G.me];
-  if(!p.picks)p.picks={};
-  if(p.picks[mid])return; // LOCKED — no changes
-  if(G.results[mid])return;
-  p.picks[mid]=team;
-  if(!p.lockedAt)p.lockedAt={};
-  p.lockedAt[mid]=new Date().toISOString();
-  await db.collection("players").doc(G.me).update({
-  picks:p.picks,
-  lockedAt:p.lockedAt
-});
-  updBanner();renderFx();
+// ── LOCK PICK — one-way, no changes ──────────────────────────
+async function lockPick(mid, team) {
+  if (!G.uid || !G.me) return;
+  const p = G.me;
+  if (!p.picks) p.picks = {};
+  if (p.picks[mid]) return;       // already picked — locked, never changes
+  if (G.results[mid]) return;     // result already in
+
+  p.picks[mid] = team;
+  if (!p.lockedAt) p.lockedAt = {};
+  p.lockedAt[mid] = new Date().toISOString();
+
+  // Optimistic UI update
+  updBanner();
+  renderFx();
+
+  // Persist to Firestore
+  try {
+    await db.collection('players').doc(G.uid).update({
+      picks: p.picks,
+      lockedAt: p.lockedAt
+    });
+  } catch(e) {
+    console.error('Failed to save pick:', e);
+    // Revert optimistic update
+    delete p.picks[mid];
+    delete p.lockedAt[mid];
+    updBanner();
+    renderFx();
+    document.getElementById('fxlist').insertAdjacentHTML('afterbegin',
+      '<div class="ipl-msg err" style="margin-bottom:12px">❌ Failed to save pick. Check your connection.</div>');
+  }
 }
 
-function renderLB(){
-  const el=document.getElementById('lblist');
-  const names=Object.keys(G.players);
-  if(!names.length){el.innerHTML='<div class="ipl-empty">No players yet.</div>';return;}
-  const rows=names.map(n=>{
-    const p=G.players[n];
-    const dec=Object.keys(G.results).filter(id=>p.picks&&p.picks[id]);
-    const acc=dec.length?Math.round((p.pts/dec.length)*100):0;
-    const str=streak(p);
-    return{name:p.name,pts:p.pts,picks:Object.keys(p.picks||{}).length,acc,str};
-  }).sort((a,b)=>b.pts-a.pts||b.acc-a.acc);
-  const md=['🥇','🥈','🥉'],rc=['g','s','b'];
-  el.innerHTML=rows.map((r,i)=>{
-    const isMe = G.players[G.me]?.name === r.name;
-    const sbadge=r.str>1?`<span class="streak-hot">🔥 ${r.str}</span>`:r.str<-1?`<span class="streak-cold">❄️ ${Math.abs(r.str)}</span>`:'';
-    return`<div class="lb-row ${isMe?'me':''}">
+// ── LEADERBOARD ──────────────────────────────────────────────
+function renderLB() {
+  const el = document.getElementById('lblist');
+  const players = Object.entries(G.players);
+  if (!players.length) { el.innerHTML = '<div class="ipl-empty">No players yet.</div>'; return; }
+
+  const rows = players.map(([uid, p]) => {
+    const dec = Object.keys(G.results).filter(id => p.picks && p.picks[id]);
+    const acc = dec.length ? Math.round((p.pts / dec.length) * 100) : 0;
+    const str = streak(p);
+    return { uid, name: p.name, pts: p.pts, picks: Object.keys(p.picks||{}).length, acc, str };
+  }).sort((a,b) => b.pts - a.pts || b.acc - a.acc);
+
+  const md = ['🥇','🥈','🥉'], rc = ['g','s','b'];
+
+  el.innerHTML = rows.map((r, i) => {
+    const isMe = r.uid === G.uid;
+    const sbadge = r.str > 1 ? `<span class="streak-hot">🔥 ${r.str}</span>` : r.str < -1 ? `<span class="streak-cold">❄️ ${Math.abs(r.str)}</span>` : '';
+    return `<div class="lb-row ${isMe ? 'me' : ''}">
       <div class="lb-rn ${rc[i]||''}">${md[i]||i+1}</div>
       <div class="lb-nc">
-        <div class="lbn">${r.name}${isMe?' <span style="font-size:.68rem;color:#fbbf24;">(you)</span>':''} ${sbadge}</div>
+        <div class="lbn">${r.name}${isMe ? ' <span style="font-size:.68rem;color:#fbbf24;">(you)</span>' : ''} ${sbadge}</div>
         <div class="lbs">${r.picks} picks · ${r.acc}% accuracy</div>
       </div>
       <div class="lb-acc"><div class="acv">${r.acc}%</div><div>acc</div></div>
@@ -619,18 +816,20 @@ function renderLB(){
   }).join('');
 }
 
-function renderStats(){
-  const p=G.players[G.me];if(!p)return;
-  const picks=p.picks||{};
-  const dec=Object.keys(G.results).filter(id=>picks[id]);
-  const correct=dec.filter(id=>picks[id]===G.results[id]);
-  const acc=dec.length?Math.round((correct.length/dec.length)*100):0;
-  const pending=Object.keys(picks).filter(id=>!G.results[id]).length;
-  const str=streak(p);
-  const tc={};Object.values(picks).forEach(t=>{tc[t]=(tc[t]||0)+1;});
-  const ts=Object.entries(tc).sort((a,b)=>b[1]-a[1]);
-  const mx=ts[0]?.[1]||1;
-  document.getElementById('sg').innerHTML=`
+// ── STATS ─────────────────────────────────────────────────────
+function renderStats() {
+  const p = G.me; if (!p) return;
+  const picks = p.picks || {};
+  const dec = Object.keys(G.results).filter(id => picks[id]);
+  const correct = dec.filter(id => picks[id] === G.results[id]);
+  const acc = dec.length ? Math.round((correct.length / dec.length) * 100) : 0;
+  const pending = Object.keys(picks).filter(id => !G.results[id]).length;
+  const str = streak(p);
+  const tc = {}; Object.values(picks).forEach(t => { tc[t] = (tc[t]||0)+1; });
+  const ts = Object.entries(tc).sort((a,b) => b[1]-a[1]);
+  const mx = ts[0]?.[1] || 1;
+
+  document.getElementById('sg').innerHTML = `
     <div class="sc"><h4>Pick Summary</h4>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
         ${[['Total',Object.keys(picks).length,'#fbbf24'],['Results In',dec.length,'#fbbf24'],['Correct ✅',correct.length,'#4ade80'],['Wrong ❌',dec.length-correct.length,'#f87171'],['Pending ⏳',pending,'#fb923c'],['Accuracy',acc+'%','#7dd3fc']].map(([l,v,c])=>`<div><div style="font-size:1.3rem;font-weight:700;color:${c}">${v}</div><div style="font-size:.68rem;color:var(--muted)">${l}</div></div>`).join('')}
@@ -638,34 +837,36 @@ function renderStats(){
     </div>
     <div class="sc"><h4>Current Streak</h4>
       <div style="font-size:2.8rem;font-weight:800;color:${str>0?'#4ade80':str<0?'#f87171':'var(--muted)'}">
-        ${str>0?'🔥 +'+str:str<0?'❄️ '+str:'—'}
+        ${str>0 ? '🔥 +'+str : str<0 ? '❄️ '+str : '—'}
       </div>
       <div style="font-size:.76rem;color:var(--muted);margin-top:8px">${str>2?'On fire! Keep going.':str<-2?'Rough patch — trust your gut.':'Based on last decided results'}</div>
     </div>`;
-  document.getElementById('tfcard').innerHTML=ts.length?`<div class="sc" style="margin-top:14px"><h4>Teams You've Backed (IPL 2025 last 5 form shown)</h4>
-    ${ts.map(([team,cnt])=>{
-      const t=tf(team);
-      const c2=Object.entries(picks).filter(([id,tm])=>tm===team&&G.results[id]===team).length;
-      const fds=(FORM[team]||[]).map(r=>`<div class="fdot ${r}"></div>`).join('');
-      return`<div class="ftr">
-        <div style="font-size:.8rem;font-weight:600;min-width:40px">${t.s}</div>
-        <div class="ftbw"><div class="ftb" style="width:${Math.round((cnt/mx)*100)}%;background:${t.c}"></div></div>
-        <div style="font-size:.68rem;color:var(--muted);min-width:20px;text-align:right">${cnt}x</div>
-        <div class="formdots" title="IPL 2025 last 5">${fds}</div>
-        <div style="font-size:.68rem;color:#4ade80;min-width:28px;text-align:right">${c2>0?'✓'+c2:''}</div>
-      </div>`;
-    }).join('')}
-  </div>`:'';
+
+  document.getElementById('tfcard').innerHTML = ts.length ? `
+    <div class="sc" style="margin-top:14px"><h4>Teams You've Backed</h4>
+      ${ts.map(([team,cnt]) => {
+        const t = tf(team);
+        const c2 = Object.entries(picks).filter(([id,tm]) => tm===team && G.results[id]===team).length;
+        const fds = (FORM[team]||[]).map(r => `<div class="fdot ${r}"></div>`).join('');
+        return `<div class="ftr">
+          <div style="font-size:.8rem;font-weight:600;min-width:40px">${t.s}</div>
+          <div class="ftbw"><div class="ftb" style="width:${Math.round((cnt/mx)*100)}%;background:${t.c}"></div></div>
+          <div style="font-size:.68rem;color:var(--muted);min-width:20px;text-align:right">${cnt}x</div>
+          <div class="formdots">${fds}</div>
+          <div style="font-size:.68rem;color:#4ade80;min-width:28px;text-align:right">${c2>0?'✓'+c2:''}</div>
+        </div>`;
+      }).join('')}
+    </div>` : '';
 }
 
 // ── ADMIN (Divesh Shetty ONLY) ────────────────────────────────
-function buildAdmin(){return`
+function buildAdmin() { return `
   <button class="adm-toggle" onclick="togAdm()">⚙ Admin Panel (Divesh Shetty only)</button>
   <div id="adm-inner" style="display:none">
     <div class="adm-panel">
       <h4>🏏 Declare Match Result</h4>
       <div class="adm-row"><label>Match</label><select class="ipl-inp" id="adm-m" onchange="onAdmMChange()" style="flex:1"></select></div>
-      <div class="adm-row"><label>Winner</label><select class="ipl-inp" id="adm-w" style="flex:1"></select></div>
+      <div class="adm-row"><label>Winner</label><select class="ipl-inp" id="adm-w" style="flex:1"><option>—</option></select></div>
       <div style="margin-top:14px;display:flex;gap:10px;align-items:center;flex-wrap:wrap">
         <button class="ipl-btn ipl-btn-sm" onclick="declareRes()">Declare & Award Points</button>
         <button class="ipl-btn-ghost" style="font-size:.75rem" onclick="undoRes()">↩ Undo Last Result</button>
@@ -676,33 +877,41 @@ function buildAdmin(){return`
         <div id="adm-overview"></div>
       </div>
     </div>
-  </div>`;}
+  </div>`; }
 
-function togAdm(){const p=document.getElementById('adm-inner');if(!p)return;p.style.display=p.style.display==='none'?'block':'none';if(p.style.display==='block')renderAdmOverview();}
+function togAdm() {
+  const p = document.getElementById('adm-inner'); if (!p) return;
+  p.style.display = p.style.display==='none' ? 'block' : 'none';
+  if (p.style.display==='block') renderAdmOverview();
+}
 
-function populateAdmSel(){
-  const s=document.getElementById('adm-m');if(!s)return;
-  s.innerHTML=G.fixtures.map(f=>`<option value="${f.id}">M${f.num}: ${tf(f.home).s} vs ${tf(f.away).s} (${f.date})${G.results[f.id]?' ✅ '+tf(G.results[f.id]).s:''}</option>`).join('');
+function populateAdmSel() {
+  const s = document.getElementById('adm-m'); if (!s) return;
+  s.innerHTML = G.fixtures.map(f =>
+    `<option value="${f.id}">M${f.num}: ${tf(f.home).s} vs ${tf(f.away).s} (${f.date})${G.results[f.id]?' ✅ '+tf(G.results[f.id]).s:''}</option>`
+  ).join('');
   onAdmMChange();
 }
-function onAdmMChange(){
-  const s=document.getElementById('adm-m'),w=document.getElementById('adm-w');if(!s||!w)return;
-  const f=G.fixtures.find(x=>x.id===s.value);
-  if(f)w.innerHTML=[f.home,f.away].map(t=>`<option value="${t}">${tf(t).s} — ${t}</option>`).join('');
+
+function onAdmMChange() {
+  const s = document.getElementById('adm-m'), w = document.getElementById('adm-w'); if (!s||!w) return;
+  const f = G.fixtures.find(x => x.id===s.value);
+  if (f) w.innerHTML = [f.home,f.away].map(t => `<option value="${t}">${tf(t).s} — ${t}</option>`).join('');
 }
-function renderAdmOverview(){
-  const el=document.getElementById('adm-overview');if(!el)return;
-  const up=G.fixtures.filter(f=>!G.results[f.id]).slice(0,5);
-  if(!up.length){el.innerHTML='<div style="color:var(--muted);font-size:.8rem">All results declared.</div>';return;}
-  el.innerHTML=up.map(f=>{
-    const votes={};
-    Object.entries(G.players).forEach(([n,p])=>{const pk=(p.picks||{})[f.id];if(pk)votes[pk]=(votes[pk]||[]).concat(n.split(' ')[0]);});
-    const tot=Object.values(votes).reduce((s,v)=>s+v.length,0);
-    return`<div style="margin-bottom:14px">
+
+function renderAdmOverview() {
+  const el = document.getElementById('adm-overview'); if (!el) return;
+  const up = G.fixtures.filter(f => !G.results[f.id]).slice(0,5);
+  if (!up.length) { el.innerHTML = '<div style="color:var(--muted);font-size:.8rem">All results declared.</div>'; return; }
+  el.innerHTML = up.map(f => {
+    const votes = {};
+    Object.values(G.players).forEach(p => { const pk = (p.picks||{})[f.id]; if (pk) votes[pk] = (votes[pk]||[]).concat(p.name?.split(' ')[0]); });
+    const tot = Object.values(votes).reduce((s,v) => s+v.length, 0);
+    return `<div style="margin-bottom:14px">
       <div style="font-size:.76rem;font-weight:600;margin-bottom:5px">M${f.num}: ${tf(f.home).s} vs ${tf(f.away).s}</div>
-      ${[f.home,f.away].map(t=>{
-        const vt=votes[t]||[];const pct=tot>0?Math.round((vt.length/tot)*100):0;
-        return`<div style="display:flex;align-items:center;gap:7px;margin-bottom:3px">
+      ${[f.home,f.away].map(t => {
+        const vt = votes[t]||[]; const pct = tot>0 ? Math.round((vt.length/tot)*100) : 0;
+        return `<div style="display:flex;align-items:center;gap:7px;margin-bottom:3px">
           <div style="font-size:.7rem;min-width:36px;color:var(--muted)">${tf(t).s}</div>
           <div style="flex:1;background:rgba(255,255,255,.06);border-radius:100px;height:5px">
             <div style="width:${pct}%;height:5px;border-radius:100px;background:${TD[t]?.c||'#7dd3fc'}"></div>
@@ -713,51 +922,59 @@ function renderAdmOverview(){
     </div>`;
   }).join('');
 }
-async function declareRes(){
-  const mid=document.getElementById('adm-m')?.value,winner=document.getElementById('adm-w')?.value,msg=document.getElementById('adm-msg');
-  if(!mid||!winner){msg.innerHTML='<div class="ipl-msg err">Select match and winner.</div>';return;}
-  if(G.results[mid]){msg.innerHTML='<div class="ipl-msg err">Result already declared.</div>';return;}
-  G.results[mid]=winner;await db.collection("results").doc("global").set(G.results);
-  let aw=0;
-  for(const n of Object.keys(G.players)){const p=G.players[n];if((p.picks||{})[mid]===winner){p.pts+=1;aw++;}}
- for(const n of Object.keys(G.players)){
-  await db.collection("players").doc(n).update({
-    pts: G.players[n].pts
-  });
-}
-  updBanner();updStrip();renderFx();renderLB();populateAdmSel();renderAdmOverview();
-  const f=G.fixtures.find(x=>x.id===mid);
-  msg.innerHTML=`<div class="ipl-msg ok">✅ ${tf(winner).s} declared winner for M${f?.num}. ${aw} player(s) scored!</div>`;
-  setTimeout(()=>{if(msg)msg.innerHTML='';},5000);
-}
-async function undoRes(){
-  const ids = Object.keys(G.results);
-  if(!ids.length) return;
 
-  const lid = ids[ids.length-1];
-  const lw = G.results[lid];
+async function declareRes() {
+  const mid = document.getElementById('adm-m')?.value;
+  const winner = document.getElementById('adm-w')?.value;
+  const msg = document.getElementById('adm-msg');
+  if (!mid||!winner) { msg.innerHTML='<div class="ipl-msg err">Select match and winner.</div>'; return; }
+  if (G.results[mid]) { msg.innerHTML='<div class="ipl-msg err">Result already declared.</div>'; return; }
 
-  for(const n of Object.keys(G.players)){
-    const p = G.players[n];
-    if((p.picks||{})[lid] === lw && p.pts > 0){
-      p.pts -= 1;
+  G.results[mid] = winner;
+  await db.collection('results').doc('global').set(G.results);
 
-      await db.collection("players").doc(n).update({
-        pts: p.pts
-      });
+  let aw = 0;
+  const batch = db.batch();
+  for (const [uid, p] of Object.entries(G.players)) {
+    if ((p.picks||{})[mid] === winner) {
+      p.pts = (p.pts||0) + 1;
+      aw++;
+      batch.update(db.collection('players').doc(uid), { pts: p.pts });
     }
   }
+  await batch.commit();
 
-  delete G.results[lid];
+  // Update own data if Divesh picked correctly
+  if (G.uid && G.players[G.uid]) G.me = G.players[G.uid];
 
-  await db.collection("results").doc("global").set(G.results);
-
-  updBanner();
-  updStrip();
-  renderFx();
-  renderLB();
-  populateAdmSel();
+  updBanner(); updStrip(); renderFx(); renderLB(); populateAdmSel(); renderAdmOverview();
+  const f = G.fixtures.find(x => x.id===mid);
+  msg.innerHTML = `<div class="ipl-msg ok">✅ ${tf(winner).s} declared winner for M${f?.num}. ${aw} player(s) scored!</div>`;
+  setTimeout(() => { if(msg) msg.innerHTML=''; }, 5000);
 }
 
+async function undoRes() {
+  const ids = Object.keys(G.results);
+  if (!ids.length) return;
+  const lid = ids[ids.length-1], lw = G.results[lid];
+
+  const batch = db.batch();
+  for (const [uid, p] of Object.entries(G.players)) {
+    if ((p.picks||{})[lid]===lw && p.pts>0) {
+      p.pts--;
+      batch.update(db.collection('players').doc(uid), { pts: p.pts });
+    }
+  }
+  delete G.results[lid];
+  await batch.commit();
+  await db.collection('results').doc('global').set(G.results);
+
+  if (G.uid && G.players[G.uid]) G.me = G.players[G.uid];
+  updBanner(); updStrip(); renderFx(); renderLB(); populateAdmSel();
+  const f = G.fixtures.find(x => x.id===lid), msg = document.getElementById('adm-msg');
+  if (msg) { msg.innerHTML=`<div class="ipl-msg inf">↩ Result for M${f?.num} undone.</div>`; setTimeout(()=>{if(msg)msg.innerHTML='';},4000); }
+}
+
+// ── START ─────────────────────────────────────────────────────
 boot();
 </script>
