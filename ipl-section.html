@@ -615,6 +615,7 @@ fbAuth.onAuthStateChanged(async user => {
 });
 
 async function iplHandleUser(user) {
+    console.log("Your UID:", user.uid);
   G.uid = user.uid;
   const ref = fbDb.collection('players').doc(user.uid);
 
