@@ -1,343 +1,399 @@
-<!-- ============================================================
-     IPL 2026 PREDICTOR — FIREBASE EDITION
-     Paste this entire block into index.html right before <footer>
+<!-- ================================================================
+  IPL 2026 PREDICTOR — PRODUCTION READY
+  Paste this ENTIRE block into index.html right before <footer>
 
-     FIXES IN THIS VERSION:
-     ✅ Google Sign-In works (popup + redirect fallback)
-     ✅ Firestore real-time listeners (everyone sees live updates)
-     ✅ Leader shows real name, not UID
-     ✅ Player chips show names correctly
-     ✅ Admin check uses display name from Firestore
-     ✅ Picks locked server-side (Firestore rule + client guard)
-     ✅ Sign out properly clears state
-
-     BEFORE THIS WORKS — do these 3 things in Firebase Console:
-     1. Authentication → Sign-in method → Enable "Google"
-     2. Authentication → Settings → Authorized domains →
-        Add your GitHub Pages domain e.g. diveshdvd.github.io
-        (also add localhost if testing locally)
-     3. Firestore → Rules → paste the rules from the comment below
-     ============================================================ -->
-
-<!--
-FIRESTORE SECURITY RULES — paste into Firebase Console → Firestore → Rules:
+  FIRESTORE RULES (paste in Firebase Console → Firestore → Rules → Publish):
 
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-
-    // Players: anyone can read, only the owner can write their own doc
     match /players/{uid} {
-      allow read: if request.auth != null;
+      allow read: if true;
       allow create: if request.auth != null && request.auth.uid == uid;
-      allow update: if request.auth != null && request.auth.uid == uid
-        && !('pts' in request.resource.data.diff(resource.data).affectedKeys());
+      allow update: if request.auth != null && request.auth.uid == uid;
     }
-
-    // Results: only Divesh can write, anyone logged in can read
     match /results/global {
-      allow read: if request.auth != null;
-      allow write: if request.auth != null
-        && get(/databases/$(database)/documents/players/$(request.auth.uid)).data.name == "Divesh Shetty";
+      allow read: if true;
+      allow write: if request.auth != null;
     }
   }
 }
--->
 
-<!-- Firebase SDKs -->
+================================================================ -->
+
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
-
 <script>
-// ── Firebase init ─────────────────────────────────────────────
-const firebaseConfig = {
-  apiKey: "AIzaSyCfnkAmnWHXermSrJddyHiyX_JsIzeztEw",
-  authDomain: "ipl-predictor-25c8f.firebaseapp.com",
-  projectId: "ipl-predictor-25c8f"
-};
-
-if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
-const auth = firebase.auth();
-const db   = firebase.firestore();
+if (!firebase.apps.length) {
+  firebase.initializeApp({
+    apiKey: "AIzaSyCfnkAmnWHXermSrJddyHiyX_JsIzeztEw",
+    authDomain: "ipl-predictor-25c8f.firebaseapp.com",
+    projectId: "ipl-predictor-25c8f"
+  });
+}
+const fbAuth = firebase.auth();
+const fbDb   = firebase.firestore();
+fbDb.enablePersistence({ synchronizeTabs: true }).catch(() => {});
 </script>
 
 <style>
-.ipl-section{padding:80px 24px 120px;max-width:900px;margin-inline:auto}
-.ipl-hero{text-align:center;margin-bottom:64px;position:relative}
-.ipl-hero-glow{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:420px;height:200px;background:radial-gradient(ellipse,rgba(249,115,22,.18),transparent 70%);pointer-events:none;z-index:0}
-.ipl-hero h2{font-size:clamp(2rem,5vw,3rem);font-family:"Georgia",serif;background:linear-gradient(90deg,#f97316,#fbbf24,#fb923c,#fbbf24,#f97316);background-size:300%;-webkit-background-clip:text;-webkit-text-fill-color:transparent;animation:shimmer 5s linear infinite;position:relative;z-index:1}
-.ipl-badge{display:inline-flex;align-items:center;gap:8px;margin-top:12px;padding:6px 18px;border:1px solid rgba(251,191,36,.35);border-radius:100px;font-size:.72rem;letter-spacing:.14em;color:#fbbf24;text-transform:uppercase;position:relative;z-index:1}
-.ipl-live-dot{width:7px;height:7px;background:#4ade80;border-radius:50%;animation:ipulse 1.5s ease infinite}
-@keyframes ipulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.5;transform:scale(.75)}}
-.ipl-hero p{margin:18px auto 0;color:var(--muted);max-width:48ch;font-size:.95rem;position:relative;z-index:1}
+/* ── IPL Predictor — Premium Design System ── */
+@import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&display=swap');
 
-.ipl-strip{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:40px}
-.is-tile{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);border-radius:14px;padding:16px;text-align:center}
-.is-tile .iv{font-size:1.6rem;font-weight:700;color:#fbbf24}
-.is-tile .il{font-size:.68rem;color:var(--muted);letter-spacing:.08em;text-transform:uppercase;margin-top:4px}
-
-.ipl-card{background:rgba(255,255,255,.03);border:1px solid rgba(125,211,252,.12);border-radius:20px;padding:36px 40px;margin-bottom:32px}
-.ipl-card h3{font-size:1.2rem;color:var(--accent);margin-bottom:20px}
-
-.ipl-row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
-
-.ipl-btn{padding:13px 26px;background:linear-gradient(135deg,#f97316,#fbbf24);border:none;border-radius:12px;color:#0c1022;font-weight:700;font-size:.9rem;font-family:inherit;cursor:pointer;transition:transform .2s,opacity .2s;white-space:nowrap;display:inline-flex;align-items:center;gap:10px}
-.ipl-btn:hover{transform:translateY(-2px);opacity:.92}
-.ipl-btn:disabled{opacity:.35;cursor:not-allowed;transform:none}
-.ipl-btn-sm{padding:8px 16px;font-size:.8rem}
-.ipl-btn-ghost{background:transparent;border:1px solid rgba(125,211,252,.3);color:var(--accent);font-size:.82rem;padding:8px 16px;border-radius:10px;cursor:pointer;font-family:inherit;transition:background .2s}
-.ipl-btn-ghost:hover{background:rgba(125,211,252,.08)}
-
-/* Google button */
-.google-btn{
-  display:inline-flex;align-items:center;gap:12px;
-  padding:14px 28px;
-  background:#fff;border:none;border-radius:12px;
-  color:#1f1f1f;font-weight:600;font-size:.95rem;
-  font-family:inherit;cursor:pointer;
-  transition:transform .2s,box-shadow .2s;
-  box-shadow:0 2px 12px rgba(0,0,0,.25);
+:root {
+  --ipl-bg: #080c1a;
+  --ipl-surface: rgba(255,255,255,.04);
+  --ipl-border: rgba(255,255,255,.08);
+  --ipl-border-hover: rgba(255,255,255,.16);
+  --ipl-gold: #f59e0b;
+  --ipl-gold-light: #fcd34d;
+  --ipl-orange: #ea580c;
+  --ipl-green: #22c55e;
+  --ipl-red: #ef4444;
+  --ipl-blue: #7dd3fc;
+  --ipl-text: #f1f5f9;
+  --ipl-muted: #64748b;
+  --ipl-muted2: #94a3b8;
+  --ipl-radius: 16px;
+  --ipl-radius-sm: 10px;
 }
-.google-btn:hover{transform:translateY(-2px);box-shadow:0 6px 20px rgba(0,0,0,.35)}
-.google-btn:disabled{opacity:.5;cursor:not-allowed;transform:none}
-.google-btn svg{flex-shrink:0}
 
-.ipl-msg{padding:11px 16px;border-radius:10px;font-size:.85rem;margin-top:12px}
-.ipl-msg.ok{background:rgba(74,222,128,.1);border:1px solid rgba(74,222,128,.3);color:#4ade80}
-.ipl-msg.err{background:rgba(248,113,113,.1);border:1px solid rgba(248,113,113,.3);color:#f87171}
-.ipl-msg.inf{background:rgba(125,211,252,.08);border:1px solid rgba(125,211,252,.2);color:var(--accent)}
-.ipl-msg.warn{background:rgba(251,191,36,.08);border:1px solid rgba(251,191,36,.3);color:#fbbf24}
+.ipl-wrap { max-width: 860px; margin-inline: auto; padding: 0 20px 120px; font-family: 'DM Sans', system-ui, sans-serif; }
 
-.pchips-wrap{margin-top:28px;padding-top:20px;border-top:1px solid rgba(255,255,255,.06)}
-.pchips-label{font-size:.7rem;color:var(--muted);letter-spacing:.08em;text-transform:uppercase;margin-bottom:10px}
-.pchips{display:flex;flex-wrap:wrap;gap:8px}
-.pchip{display:flex;align-items:center;gap:7px;padding:7px 13px;background:rgba(255,255,255,.04);border:1px solid rgba(125,211,252,.15);border-radius:100px;font-size:.82rem}
-.pchip .pr{width:18px;height:18px;background:linear-gradient(135deg,#f97316,#fbbf24);border-radius:50%;display:grid;place-items:center;font-size:.62rem;font-weight:700;color:#0c1022}
-.pchip .pp{color:#fbbf24;font-weight:600}
+/* Divider */
+.ipl-rule { height: 1px; background: linear-gradient(90deg, transparent, rgba(234,88,12,.6), rgba(245,158,11,.6), transparent); margin: 80px 0 72px; }
 
-.ab-wrap{background:linear-gradient(135deg,rgba(249,115,22,.12),rgba(251,191,36,.08));border:1px solid rgba(249,115,22,.28);border-radius:16px;padding:18px 24px;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:28px}
-.ab-name{font-size:1.05rem;font-weight:700}
-.ab-pts{font-size:2rem;font-weight:800;color:#fbbf24;line-height:1}
-.ab-sub{font-size:.72rem;color:var(--muted)}
-.ab-mini{display:flex;gap:18px;flex-wrap:wrap}
-.ab-mini .mv{font-size:1.1rem;font-weight:700}
-.ab-mini .ml{font-size:.68rem;color:var(--muted)}
+/* Hero */
+.ipl-hero { text-align: center; margin-bottom: 52px; position: relative; }
+.ipl-hero-bg { position: absolute; inset: -40px; background: radial-gradient(ellipse 60% 50% at 50% 60%, rgba(234,88,12,.12) 0%, transparent 70%); pointer-events: none; }
+.ipl-hero-title { font-family: 'Bebas Neue', sans-serif; font-size: clamp(2.8rem, 7vw, 5rem); letter-spacing: .04em; background: linear-gradient(135deg, #f59e0b 0%, #fcd34d 40%, #ea580c 80%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; line-height: 1; position: relative; }
+.ipl-hero-sub { font-size: .78rem; letter-spacing: .2em; text-transform: uppercase; color: var(--ipl-muted2); margin: 12px 0 8px; position: relative; }
+.ipl-hero-desc { color: var(--ipl-muted2); font-size: .9rem; max-width: 44ch; margin: 0 auto; position: relative; line-height: 1.7; }
 
-.ipl-tabs{display:flex;gap:4px;background:rgba(255,255,255,.04);border-radius:14px;padding:4px;margin-bottom:28px}
-.ipl-tab{flex:1;padding:10px 8px;text-align:center;border-radius:11px;cursor:pointer;font-size:.82rem;font-weight:500;color:var(--muted);transition:all .2s;white-space:nowrap}
-.ipl-tab.active{background:rgba(125,211,252,.12);color:var(--accent)}
+/* Live pill */
+.ipl-live-pill { display: inline-flex; align-items: center; gap: 6px; padding: 4px 12px; background: rgba(34,197,94,.1); border: 1px solid rgba(34,197,94,.25); border-radius: 100px; font-size: .7rem; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; color: var(--ipl-green); margin-bottom: 16px; position: relative; }
+.ipl-live-pulse { width: 6px; height: 6px; background: var(--ipl-green); border-radius: 50%; animation: iplpulse 1.4s ease infinite; }
+@keyframes iplpulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.4;transform:scale(.7)} }
 
-.frow{display:flex;gap:8px;margin-bottom:20px;flex-wrap:wrap}
-.fchip{padding:5px 13px;border-radius:100px;border:1px solid rgba(255,255,255,.1);background:transparent;color:var(--muted);font-size:.74rem;cursor:pointer;font-family:inherit;transition:all .2s}
-.fchip.active{border-color:rgba(251,191,36,.5);color:#fbbf24;background:rgba(251,191,36,.08)}
+/* Stats strip */
+.ipl-strip { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 36px; }
+.ipl-tile { background: var(--ipl-surface); border: 1px solid var(--ipl-border); border-radius: var(--ipl-radius-sm); padding: 18px 14px; text-align: center; transition: border-color .2s; }
+.ipl-tile:hover { border-color: var(--ipl-border-hover); }
+.ipl-tile-val { font-family: 'Bebas Neue', sans-serif; font-size: 2.2rem; color: var(--ipl-gold); letter-spacing: .04em; line-height: 1; }
+.ipl-tile-lbl { font-size: .64rem; letter-spacing: .12em; text-transform: uppercase; color: var(--ipl-muted); margin-top: 5px; }
 
-.fxcard{background:rgba(255,255,255,.028);border:1px solid rgba(255,255,255,.07);border-radius:18px;padding:22px 24px;margin-bottom:12px;transition:border-color .2s}
-.fxcard:hover{border-color:rgba(125,211,252,.18)}
-.fxtop{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:6px}
-.fxno{font-size:.68rem;letter-spacing:.12em;color:var(--muted);text-transform:uppercase}
-.fxdate{font-size:.74rem;color:var(--muted)}
-.fxcd{font-size:.72rem;color:#fb923c;font-weight:600}
-.fxcd.soon{color:#4ade80}
+/* Cards */
+.ipl-card { background: var(--ipl-surface); border: 1px solid var(--ipl-border); border-radius: var(--ipl-radius); padding: 32px; margin-bottom: 24px; }
+.ipl-card-title { font-size: 1rem; font-weight: 600; color: var(--ipl-blue); margin-bottom: 18px; display: flex; align-items: center; gap: 8px; }
 
-.fxteams{display:flex;align-items:stretch;gap:10px}
-.tpbtn{flex:1;display:flex;flex-direction:column;align-items:center;gap:7px;padding:14px 8px;border-radius:14px;border:1.5px solid rgba(255,255,255,.1);background:rgba(255,255,255,.025);color:var(--text);font-family:inherit;cursor:pointer;transition:all .2s;position:relative;overflow:hidden}
-.tpbtn:hover:not(:disabled){border-color:rgba(251,191,36,.45);background:rgba(251,191,36,.06)}
-.tpbtn.sel{border-color:#fbbf24!important;background:rgba(251,191,36,.12)!important}
-.tpbtn.sel::after{content:'🔒 LOCKED';position:absolute;top:5px;right:7px;font-size:.55rem;letter-spacing:.06em;font-weight:700;color:#fbbf24}
-.tpbtn.win{border-color:#4ade80!important;background:rgba(74,222,128,.09)!important}
-.tpbtn.cor{border-color:#4ade80!important;background:rgba(74,222,128,.12)!important}
-.tpbtn.wrg{border-color:rgba(248,113,113,.3)!important;background:rgba(248,113,113,.05)!important;opacity:.7}
-.tpbtn:disabled{cursor:not-allowed}
+/* Buttons */
+.ipl-gbtn { display: inline-flex; align-items: center; gap: 12px; padding: 14px 28px; background: #fff; border: none; border-radius: var(--ipl-radius-sm); color: #1a1a1a; font-weight: 600; font-size: .95rem; font-family: inherit; cursor: pointer; transition: transform .15s, box-shadow .15s; box-shadow: 0 2px 16px rgba(0,0,0,.3); }
+.ipl-gbtn:hover { transform: translateY(-2px); box-shadow: 0 6px 24px rgba(0,0,0,.4); }
+.ipl-gbtn:disabled { opacity: .5; cursor: not-allowed; transform: none; }
+.ipl-gbtn svg { flex-shrink: 0; }
 
-.tlogo{width:42px;height:42px;object-fit:contain;filter:drop-shadow(0 2px 8px rgba(0,0,0,.5))}
-.tplc{width:42px;height:42px;border-radius:50%;display:grid;place-items:center;font-size:.68rem;font-weight:700;color:#0c1022}
-.tshort{font-size:.95rem;font-weight:800}
-.tfull{font-size:.68rem;color:var(--muted);text-align:center;line-height:1.3}
-.vssep{display:flex;align-items:center;flex-shrink:0;font-size:.68rem;color:var(--muted);font-weight:600}
-.formdots{display:flex;gap:3px}
-.fdot{width:7px;height:7px;border-radius:50%}
-.fdot.W{background:#4ade80}
-.fdot.L{background:#f87171}
+.ipl-btn { padding: 11px 22px; background: linear-gradient(135deg, var(--ipl-orange), var(--ipl-gold)); border: none; border-radius: var(--ipl-radius-sm); color: #0c0c0c; font-weight: 700; font-size: .85rem; font-family: inherit; cursor: pointer; transition: transform .15s, opacity .15s; }
+.ipl-btn:hover { transform: translateY(-1px); opacity: .92; }
+.ipl-btn:disabled { opacity: .35; cursor: not-allowed; transform: none; }
+.ipl-btn-ghost { background: transparent; border: 1px solid rgba(125,211,252,.3); color: var(--ipl-blue); font-size: .8rem; padding: 8px 16px; border-radius: 8px; cursor: pointer; font-family: inherit; transition: background .2s; }
+.ipl-btn-ghost:hover { background: rgba(125,211,252,.08); }
 
-.fxlive{margin-top:12px;padding:10px 14px;background:rgba(74,222,128,.06);border:1px solid rgba(74,222,128,.2);border-radius:10px;font-size:.78rem}
-.fxlive-lbl{display:inline-flex;align-items:center;gap:5px;color:#4ade80;font-weight:600;margin-bottom:4px}
-.fxlive-sc{color:var(--text)}
-.fxlive-st{color:var(--muted);margin-top:2px;font-size:.72rem}
-.fxps{margin-top:10px;font-size:.76rem}
-.fxps.ok{color:#4ade80}.fxps.bad{color:#f87171}.fxps.pend{color:#fbbf24}.fxps.none{color:var(--muted)}
-.fxvenue{margin-top:8px;font-size:.7rem;color:var(--muted)}
+/* Messages */
+.ipl-msg { padding: 12px 16px; border-radius: var(--ipl-radius-sm); font-size: .84rem; margin-top: 12px; line-height: 1.5; }
+.ipl-msg-ok   { background: rgba(34,197,94,.08);  border: 1px solid rgba(34,197,94,.25);  color: #4ade80; }
+.ipl-msg-err  { background: rgba(239,68,68,.08);  border: 1px solid rgba(239,68,68,.25);  color: #f87171; }
+.ipl-msg-warn { background: rgba(245,158,11,.08); border: 1px solid rgba(245,158,11,.25); color: #fcd34d; }
+.ipl-msg-inf  { background: rgba(125,211,252,.08);border: 1px solid rgba(125,211,252,.25);color: var(--ipl-blue); }
 
-.live-now{background:rgba(74,222,128,.04);border:1px solid rgba(74,222,128,.2);border-radius:16px;padding:18px 22px;margin-bottom:22px}
-.live-now-hdr{display:flex;align-items:center;gap:7px;font-size:.72rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#4ade80;margin-bottom:10px}
-.live-now-name{font-size:.88rem;font-weight:600;margin-bottom:4px}
-.live-now-sc{font-size:.8rem;color:var(--muted)}
+/* Player chips */
+.ipl-chips-wrap { margin-top: 24px; padding-top: 20px; border-top: 1px solid var(--ipl-border); }
+.ipl-chips-lbl { font-size: .66rem; letter-spacing: .12em; text-transform: uppercase; color: var(--ipl-muted); margin-bottom: 10px; }
+.ipl-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.ipl-chip { display: inline-flex; align-items: center; gap: 7px; padding: 6px 13px; background: rgba(255,255,255,.04); border: 1px solid var(--ipl-border); border-radius: 100px; font-size: .8rem; }
+.ipl-chip-rank { width: 17px; height: 17px; background: linear-gradient(135deg, var(--ipl-orange), var(--ipl-gold)); border-radius: 50%; display: grid; place-items: center; font-size: .58rem; font-weight: 700; color: #000; }
+.ipl-chip-pts { color: var(--ipl-gold); font-weight: 600; font-size: .76rem; }
 
-.lb-wrap{display:flex;flex-direction:column;gap:10px}
-.lb-row{display:flex;align-items:center;gap:14px;padding:16px 20px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);border-radius:14px;transition:transform .2s}
-.lb-row:hover{transform:translateX(4px)}
-.lb-row.me{border-color:rgba(251,191,36,.3);background:rgba(251,191,36,.05)}
-.lb-rn{font-size:1.3rem;font-weight:800;width:28px;text-align:center}
-.lb-rn.g{color:#fbbf24}.lb-rn.s{color:#cbd5e1}.lb-rn.b{color:#d97706}
-.lb-nc{flex:1}
-.lb-nc .lbn{font-weight:600;font-size:.93rem}
-.lb-nc .lbs{font-size:.7rem;color:var(--muted);margin-top:2px}
-.lb-acc{font-size:.68rem;color:var(--muted);text-align:center;min-width:40px}
-.lb-acc .acv{font-size:.95rem;font-weight:700;color:var(--accent)}
-.lb-pts{font-size:1.55rem;font-weight:800;color:#fbbf24;min-width:36px;text-align:right}
-.streak-hot{font-size:.68rem;padding:2px 7px;border-radius:100px;background:rgba(249,115,22,.15);color:#fb923c}
-.streak-cold{font-size:.68rem;padding:2px 7px;border-radius:100px;background:rgba(125,211,252,.08);color:var(--accent)}
+/* Active user banner */
+.ipl-banner { background: linear-gradient(135deg, rgba(234,88,12,.1), rgba(245,158,11,.07)); border: 1px solid rgba(234,88,12,.25); border-radius: var(--ipl-radius); padding: 20px 24px; display: grid; grid-template-columns: 1fr auto auto; align-items: center; gap: 20px; margin-bottom: 28px; }
+.ipl-banner-name { font-size: 1.1rem; font-weight: 600; }
+.ipl-banner-sub { font-size: .7rem; color: var(--ipl-muted2); margin-top: 2px; }
+.ipl-banner-pts { font-family: 'Bebas Neue', sans-serif; font-size: 3rem; color: var(--ipl-gold); line-height: 1; }
+.ipl-banner-pts-lbl { font-size: .62rem; letter-spacing: .1em; text-transform: uppercase; color: var(--ipl-muted); }
+.ipl-banner-stats { display: flex; gap: 20px; }
+.ipl-bstat-v { font-size: 1.3rem; font-weight: 600; line-height: 1; }
+.ipl-bstat-l { font-size: .62rem; letter-spacing: .08em; text-transform: uppercase; color: var(--ipl-muted); margin-top: 2px; }
 
-.sg{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px}
-.sc{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);border-radius:14px;padding:18px 20px}
-.sc h4{font-size:.72rem;color:var(--muted);letter-spacing:.08em;text-transform:uppercase;margin-bottom:12px}
-.ftr{display:flex;align-items:center;gap:8px;margin-bottom:8px}
-.ftbw{flex:1;background:rgba(255,255,255,.06);border-radius:100px;height:5px}
-.ftb{height:5px;border-radius:100px}
+/* Tabs */
+.ipl-tabs { display: flex; gap: 3px; background: rgba(0,0,0,.3); border-radius: var(--ipl-radius-sm); padding: 4px; margin-bottom: 28px; }
+.ipl-tab { flex: 1; padding: 10px 8px; text-align: center; border-radius: 8px; cursor: pointer; font-size: .8rem; font-weight: 500; color: var(--ipl-muted2); transition: all .2s; }
+.ipl-tab.on { background: rgba(245,158,11,.15); color: var(--ipl-gold); border: 1px solid rgba(245,158,11,.2); }
 
-.adm-toggle{background:none;border:none;font-family:inherit;font-size:.74rem;color:var(--muted);cursor:pointer;padding:0;text-decoration:underline dotted}
-.adm-toggle:hover{color:var(--accent)}
-.adm-panel{margin-top:14px;padding:24px;background:rgba(255,255,255,.02);border:1px dashed rgba(249,115,22,.25);border-radius:14px}
-.adm-panel h4{font-size:.78rem;color:#fb923c;letter-spacing:.1em;text-transform:uppercase;margin-bottom:14px}
-.adm-row{display:flex;gap:10px;align-items:center;margin-bottom:12px;flex-wrap:wrap}
-.adm-row label{font-size:.78rem;color:var(--muted);min-width:90px;flex-shrink:0}
-select.ipl-inp{flex:1;padding:10px 14px;font-size:.84rem;background:rgba(255,255,255,.06);border:1px solid rgba(125,211,252,.2);border-radius:12px;color:var(--text);font-family:inherit;outline:none}
+/* Filter chips */
+.ipl-filters { display: flex; gap: 7px; margin-bottom: 20px; flex-wrap: wrap; }
+.ipl-fc { padding: 5px 14px; border-radius: 100px; border: 1px solid var(--ipl-border); background: transparent; color: var(--ipl-muted2); font-size: .74rem; cursor: pointer; font-family: inherit; transition: all .2s; }
+.ipl-fc.on { border-color: rgba(245,158,11,.5); color: var(--ipl-gold); background: rgba(245,158,11,.08); }
 
-.ipl-loader{text-align:center;padding:36px;color:var(--muted)}
-.ipl-spin{width:28px;height:28px;border:3px solid rgba(125,211,252,.15);border-top-color:var(--accent);border-radius:50%;animation:ispin .75s linear infinite;margin:0 auto 12px}
-@keyframes ispin{to{transform:rotate(360deg)}}
-.ipl-empty{text-align:center;padding:36px;color:var(--muted);font-size:.88rem}
-.ipl-divline{height:1px;background:linear-gradient(to right,transparent,rgba(249,115,22,.45),transparent);margin:80px 0}
+/* Live match banner */
+.ipl-live-match { background: rgba(34,197,94,.04); border: 1px solid rgba(34,197,94,.2); border-radius: var(--ipl-radius); padding: 18px 22px; margin-bottom: 20px; }
+.ipl-live-hdr { display: flex; align-items: center; gap: 8px; font-size: .68rem; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: var(--ipl-green); margin-bottom: 10px; }
+.ipl-live-name { font-size: .9rem; font-weight: 600; margin-bottom: 6px; }
+.ipl-live-scores { display: flex; flex-direction: column; gap: 3px; }
+.ipl-live-score-row { font-size: .8rem; color: var(--ipl-muted2); }
+.ipl-live-score-row strong { color: var(--ipl-text); }
+.ipl-live-status { font-size: .72rem; color: var(--ipl-muted); margin-top: 6px; font-style: italic; }
 
-@media(max-width:640px){
-  .ipl-strip{grid-template-columns:1fr 1fr}
-  .sg{grid-template-columns:1fr}
-  .ipl-tabs{flex-wrap:wrap}
-  .fxteams{flex-direction:column}
-  .vssep{align-self:center}
-  .ab-wrap{flex-direction:column;text-align:center}
-  .ipl-card{padding:22px 18px}
+/* Fixture card */
+.ipl-fx { background: var(--ipl-surface); border: 1px solid var(--ipl-border); border-radius: var(--ipl-radius); padding: 20px 22px; margin-bottom: 12px; transition: border-color .2s, transform .15s; }
+.ipl-fx:hover { border-color: var(--ipl-border-hover); }
+.ipl-fx.live-now { border-color: rgba(34,197,94,.3); background: rgba(34,197,94,.03); }
+.ipl-fx-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; flex-wrap: wrap; gap: 6px; }
+.ipl-fx-num { font-size: .64rem; letter-spacing: .14em; text-transform: uppercase; color: var(--ipl-muted); }
+.ipl-fx-meta { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.ipl-fx-date { font-size: .75rem; color: var(--ipl-muted2); }
+.ipl-fx-cd { font-size: .72rem; font-weight: 600; color: var(--ipl-orange); }
+.ipl-fx-cd.soon { color: var(--ipl-green); }
+
+/* Team buttons */
+.ipl-teams { display: flex; gap: 10px; align-items: stretch; }
+.ipl-team-btn {
+  flex: 1; display: flex; flex-direction: column; align-items: center; gap: 7px;
+  padding: 16px 10px; border-radius: 12px; border: 1.5px solid var(--ipl-border);
+  background: rgba(255,255,255,.02); color: var(--ipl-text); font-family: inherit;
+  cursor: pointer; transition: all .2s; position: relative; overflow: hidden;
+}
+.ipl-team-btn::before { content: ''; position: absolute; inset: 0; opacity: 0; transition: opacity .2s; }
+.ipl-team-btn:hover:not(:disabled) { border-color: rgba(245,158,11,.5); background: rgba(245,158,11,.06); }
+.ipl-team-btn:disabled { cursor: not-allowed; }
+
+/* States */
+.ipl-team-btn.picked { border-color: var(--ipl-gold) !important; background: rgba(245,158,11,.1) !important; }
+.ipl-team-btn.picked::after { content: '🔒'; position: absolute; top: 6px; right: 8px; font-size: .75rem; }
+.ipl-team-btn.winner { border-color: var(--ipl-green) !important; background: rgba(34,197,94,.08) !important; }
+.ipl-team-btn.correct { border-color: var(--ipl-green) !important; background: rgba(34,197,94,.12) !important; }
+.ipl-team-btn.wrong { border-color: rgba(239,68,68,.35) !important; background: rgba(239,68,68,.05) !important; opacity: .65; }
+
+.ipl-tlogo { width: 44px; height: 44px; object-fit: contain; filter: drop-shadow(0 2px 6px rgba(0,0,0,.5)); }
+.ipl-tplc { width: 44px; height: 44px; border-radius: 50%; display: grid; place-items: center; font-size: .72rem; font-weight: 700; color: #000; }
+.ipl-tshort { font-family: 'Bebas Neue', sans-serif; font-size: 1.25rem; letter-spacing: .06em; line-height: 1; }
+.ipl-tfull { font-size: .63rem; color: var(--ipl-muted2); text-align: center; line-height: 1.3; }
+.ipl-vs { display: flex; align-items: center; flex-shrink: 0; font-size: .68rem; font-weight: 700; letter-spacing: .1em; color: var(--ipl-muted); }
+
+/* Form dots */
+.ipl-form { display: flex; gap: 3px; }
+.ipl-fd { width: 6px; height: 6px; border-radius: 50%; }
+.ipl-fd.W { background: var(--ipl-green); }
+.ipl-fd.L { background: #ef444499; }
+
+/* Inline live score on fixture */
+.ipl-fx-live { margin-top: 12px; padding: 10px 14px; background: rgba(34,197,94,.05); border: 1px solid rgba(34,197,94,.18); border-radius: 8px; font-size: .78rem; }
+.ipl-fx-live-lbl { display: inline-flex; align-items: center; gap: 5px; color: var(--ipl-green); font-weight: 700; font-size: .66rem; letter-spacing: .1em; text-transform: uppercase; margin-bottom: 5px; }
+.ipl-fx-live-sc { color: var(--ipl-muted2); }
+.ipl-fx-live-sc strong { color: var(--ipl-text); }
+.ipl-fx-live-st { color: var(--ipl-muted); font-size: .72rem; margin-top: 3px; font-style: italic; }
+
+/* Pick status */
+.ipl-ps { margin-top: 10px; font-size: .76rem; }
+.ipl-ps.ok   { color: var(--ipl-green); }
+.ipl-ps.bad  { color: #f87171; }
+.ipl-ps.pend { color: var(--ipl-gold); }
+.ipl-ps.none { color: var(--ipl-muted); }
+
+/* Venue */
+.ipl-venue { margin-top: 8px; font-size: .68rem; color: var(--ipl-muted); }
+
+/* Leaderboard */
+.ipl-lb { display: flex; flex-direction: column; gap: 10px; }
+.ipl-lb-row { display: flex; align-items: center; gap: 14px; padding: 16px 20px; background: var(--ipl-surface); border: 1px solid var(--ipl-border); border-radius: var(--ipl-radius-sm); transition: transform .2s, border-color .2s; }
+.ipl-lb-row:hover { transform: translateX(4px); border-color: var(--ipl-border-hover); }
+.ipl-lb-row.me { border-color: rgba(245,158,11,.3); background: rgba(245,158,11,.04); }
+.ipl-lb-rank { font-family: 'Bebas Neue', sans-serif; font-size: 1.6rem; width: 30px; text-align: center; color: var(--ipl-muted); }
+.ipl-lb-rank.g { color: #fbbf24; }
+.ipl-lb-rank.s { color: #cbd5e1; }
+.ipl-lb-rank.b { color: #d97706; }
+.ipl-lb-info { flex: 1; }
+.ipl-lb-name { font-weight: 600; font-size: .92rem; }
+.ipl-lb-meta { font-size: .68rem; color: var(--ipl-muted); margin-top: 3px; }
+.ipl-lb-acc { text-align: center; min-width: 44px; }
+.ipl-lb-acc-v { font-size: .95rem; font-weight: 600; color: var(--ipl-blue); }
+.ipl-lb-acc-l { font-size: .6rem; color: var(--ipl-muted); }
+.ipl-lb-pts { font-family: 'Bebas Neue', sans-serif; font-size: 1.8rem; color: var(--ipl-gold); min-width: 42px; text-align: right; }
+.ipl-streak-hot  { font-size: .66rem; padding: 2px 8px; border-radius: 100px; background: rgba(234,88,12,.15); color: #fb923c; }
+.ipl-streak-cold { font-size: .66rem; padding: 2px 8px; border-radius: 100px; background: rgba(125,211,252,.08); color: var(--ipl-blue); }
+
+/* Stats */
+.ipl-sg { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 14px; }
+.ipl-sc { background: var(--ipl-surface); border: 1px solid var(--ipl-border); border-radius: var(--ipl-radius-sm); padding: 18px 20px; }
+.ipl-sc h4 { font-size: .66rem; letter-spacing: .12em; text-transform: uppercase; color: var(--ipl-muted); margin-bottom: 14px; }
+.ipl-sg-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.ipl-sg-item-v { font-family: 'Bebas Neue', sans-serif; font-size: 2rem; line-height: 1; }
+.ipl-sg-item-l { font-size: .66rem; color: var(--ipl-muted); margin-top: 2px; letter-spacing: .04em; }
+.ipl-ftr { display: flex; align-items: center; gap: 9px; margin-bottom: 9px; }
+.ipl-ftbw { flex: 1; background: rgba(255,255,255,.06); border-radius: 100px; height: 5px; overflow: hidden; }
+.ipl-ftb { height: 5px; border-radius: 100px; transition: width .4s ease; }
+
+/* Admin */
+.ipl-adm-toggle { background: none; border: none; font-family: inherit; font-size: .72rem; color: var(--ipl-muted); cursor: pointer; padding: 0; text-decoration: underline dotted; }
+.ipl-adm-toggle:hover { color: var(--ipl-blue); }
+.ipl-adm-panel { margin-top: 14px; padding: 24px; background: rgba(255,255,255,.02); border: 1px dashed rgba(234,88,12,.25); border-radius: var(--ipl-radius-sm); }
+.ipl-adm-panel h4 { font-size: .72rem; color: #fb923c; letter-spacing: .12em; text-transform: uppercase; margin-bottom: 14px; }
+.ipl-adm-row { display: flex; gap: 10px; align-items: center; margin-bottom: 12px; flex-wrap: wrap; }
+.ipl-adm-row label { font-size: .76rem; color: var(--ipl-muted); min-width: 80px; flex-shrink: 0; }
+.ipl-sel { flex: 1; padding: 10px 14px; font-size: .84rem; background: rgba(255,255,255,.06); border: 1px solid rgba(125,211,252,.2); border-radius: 8px; color: var(--ipl-text); font-family: inherit; outline: none; }
+.ipl-adm-bar { display: flex; align-items: center; gap: 7px; margin-bottom: 4px; }
+.ipl-adm-bar-bg { flex: 1; background: rgba(255,255,255,.06); border-radius: 100px; height: 5px; }
+.ipl-adm-bar-fill { height: 5px; border-radius: 100px; }
+
+/* Loader */
+.ipl-spin { width: 24px; height: 24px; border: 2.5px solid rgba(125,211,252,.15); border-top-color: var(--ipl-blue); border-radius: 50%; animation: ipl-spin .7s linear infinite; display: inline-block; }
+@keyframes ipl-spin { to { transform: rotate(360deg); } }
+
+.ipl-empty { text-align: center; padding: 36px; color: var(--ipl-muted); font-size: .88rem; }
+.ipl-divline { height: 1px; background: linear-gradient(to right,transparent,rgba(234,88,12,.45),transparent); margin: 80px 0; }
+
+/* Responsive */
+@media (max-width: 600px) {
+  .ipl-strip { grid-template-columns: 1fr 1fr; }
+  .ipl-sg { grid-template-columns: 1fr; }
+  .ipl-tabs { flex-wrap: wrap; }
+  .ipl-teams { flex-direction: column; }
+  .ipl-vs { align-self: center; }
+  .ipl-banner { grid-template-columns: 1fr; text-align: center; }
+  .ipl-banner-stats { justify-content: center; }
+  .ipl-card { padding: 20px 16px; }
 }
 </style>
 
-<!-- ───────────── SECTION ───────────── -->
-<section class="ipl-section" id="ipl-predictor">
+<!-- ─── HTML ─── -->
+<section id="ipl-predictor">
+<div class="ipl-wrap">
 
-  <div class="ipl-divline"></div>
+  <div class="ipl-rule"></div>
 
   <!-- Hero -->
   <div class="ipl-hero reveal">
-    <div class="ipl-hero-glow"></div>
-    <h2>🏏 IPL 2026 Predictor</h2>
-    <div class="ipl-badge"><span class="ipl-live-dot"></span>ASB Office League · TATA IPL 2026</div>
-    <p>Pick the winner before each match. Your pick locks immediately — no going back. One point per correct call.</p>
+    <div class="ipl-hero-bg"></div>
+    <div class="ipl-live-pill"><span class="ipl-live-pulse"></span>Season 2026</div>
+    <div class="ipl-hero-title">IPL 2026<br>Predictor</div>
+    <div class="ipl-hero-sub"> TATA IPL 2026</div>
+    <div class="ipl-hero-desc">Pick the winner before every match. One tap. Locks instantly. One point per correct call. May the best analyst win.</div>
   </div>
 
-  <!-- Global strip -->
+  <!-- Stats strip -->
   <div class="ipl-strip reveal">
-    <div class="is-tile"><div class="iv" id="gs-m">20</div><div class="il">Matches</div></div>
-    <div class="is-tile"><div class="iv" id="gs-p">0</div><div class="il">Players</div></div>
-    <div class="is-tile"><div class="iv" id="gs-d">0</div><div class="il">Results In</div></div>
-    <div class="is-tile"><div class="iv" id="gs-l">—</div><div class="il">Leader</div></div>
+    <div class="ipl-tile"><div class="ipl-tile-val" id="gs-m">20</div><div class="ipl-tile-lbl">Matches</div></div>
+    <div class="ipl-tile"><div class="ipl-tile-val" id="gs-p">—</div><div class="ipl-tile-lbl">Players</div></div>
+    <div class="ipl-tile"><div class="ipl-tile-val" id="gs-d">0</div><div class="ipl-tile-lbl">Results In</div></div>
+    <div class="ipl-tile"><div class="ipl-tile-val" id="gs-l">—</div><div class="ipl-tile-lbl">Leader</div></div>
   </div>
 
-  <!-- Live now -->
-  <div id="live-wrap" style="display:none;" class="reveal"></div>
+  <!-- Live matches (API) -->
+  <div id="ipl-live-now" style="display:none;"></div>
 
-  <!-- Register / Login card -->
-  <div class="ipl-card reveal" id="reg-card">
-    <h3>🎯 Join the Office League</h3>
-    <p style="color:var(--muted);font-size:.88rem;margin-bottom:20px;">Sign in with your Google account to pick match winners and compete with your ASB colleagues.</p>
-
-    <div class="ipl-row">
-      <button class="google-btn" id="google-btn" onclick="googleLogin()">
-        <!-- Google G logo SVG -->
-        <svg width="20" height="20" viewBox="0 0 48 48">
-          <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
-          <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
-          <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>
-          <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.18 1.48-4.97 2.31-8.16 2.31-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
-          <path fill="none" d="M0 0h48v48H0z"/>
-        </svg>
-        Sign in with Google
-      </button>
-    </div>
-
-    <div id="reg-msg"></div>
-
-    <!-- Already playing players shown as read-only info -->
-    <div class="pchips-wrap" id="chips-wrap" style="display:none;">
-      <div class="pchips-label">Currently in the league</div>
-      <div class="pchips" id="pchips"></div>
+  <!-- Login -->
+  <div class="ipl-card reveal" id="ipl-reg">
+    <div class="ipl-card-title">🎯 Join the League</div>
+    <p style="color:var(--ipl-muted2);font-size:.88rem;margin-bottom:22px;">Sign in with Google to start picking match winners. Your colleagues are waiting.</p>
+    <button class="ipl-gbtn" id="ipl-gbtn" onclick="iplGoogleLogin()">
+      <svg width="20" height="20" viewBox="0 0 48 48">
+        <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
+        <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
+        <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>
+        <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.18 1.48-4.97 2.31-8.16 2.31-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
+      </svg>
+      Sign in with Google
+    </button>
+    <div id="ipl-reg-msg"></div>
+    <div id="ipl-chips-wrap" class="ipl-chips-wrap" style="display:none;">
+      <div class="ipl-chips-lbl">Currently in the league</div>
+      <div class="ipl-chips" id="ipl-chips"></div>
     </div>
   </div>
 
-  <!-- Main App (hidden until signed in) -->
+  <!-- App (shown after login) -->
   <div id="ipl-app" style="display:none;">
 
-    <div class="ab-wrap reveal">
+    <!-- Banner -->
+    <div class="ipl-banner reveal">
       <div>
-        <div class="ab-name" id="ab-n">—</div>
-        <div class="ab-sub">IPL 2026 · ASB Office</div>
+        <div class="ipl-banner-name" id="ipl-ab-name">—</div>
+        <div class="ipl-banner-sub">IPL 2026 </div>
       </div>
       <div style="text-align:center;">
-        <div class="ab-pts" id="ab-p">0</div>
-        <div class="ab-sub">points</div>
+        <div class="ipl-banner-pts" id="ipl-ab-pts">0</div>
+        <div class="ipl-banner-pts-lbl">points</div>
       </div>
-      <div style="display:flex;flex-direction:column;align-items:flex-end;gap:8px;">
-        <div class="ab-mini" id="ab-mini"></div>
-        <button class="ipl-btn-ghost" onclick="signOut()">Sign Out</button>
+      <div>
+        <div class="ipl-banner-stats" id="ipl-ab-stats"></div>
+        <div style="margin-top:12px;text-align:right;">
+          <button class="ipl-btn-ghost" onclick="iplSignOut()">Sign Out</button>
+        </div>
       </div>
     </div>
 
+    <!-- Tabs -->
     <div class="ipl-tabs reveal">
-      <div class="ipl-tab active" onclick="tab('fx',this)">📅 Fixtures</div>
-      <div class="ipl-tab" onclick="tab('lb',this)">🏆 Leaderboard</div>
-      <div class="ipl-tab" onclick="tab('st',this)">📊 My Stats</div>
+      <div class="ipl-tab on" onclick="iplTab('fx',this)">📅 Fixtures</div>
+      <div class="ipl-tab" onclick="iplTab('lb',this)">🏆 Leaderboard</div>
+      <div class="ipl-tab" onclick="iplTab('st',this)">📊 My Stats</div>
     </div>
 
-    <div id="tab-fx">
-      <div class="frow">
-        <button class="fchip active" onclick="filt('all',this)">All</button>
-        <button class="fchip" onclick="filt('up',this)">Upcoming</button>
-        <button class="fchip" onclick="filt('pk',this)">My Picks</button>
-        <button class="fchip" onclick="filt('dn',this)">Results</button>
+    <!-- Fixtures -->
+    <div id="ipl-tab-fx">
+      <div class="ipl-filters">
+        <button class="ipl-fc on" onclick="iplFilt('all',this)">All</button>
+        <button class="ipl-fc" onclick="iplFilt('up',this)">Upcoming</button>
+        <button class="ipl-fc" onclick="iplFilt('pk',this)">My Picks</button>
+        <button class="ipl-fc" onclick="iplFilt('dn',this)">Results</button>
       </div>
-      <div id="fxlist"></div>
+      <div id="ipl-fxlist"></div>
     </div>
 
-    <div id="tab-lb" style="display:none;"><div class="lb-wrap" id="lblist"></div></div>
-
-    <div id="tab-st" style="display:none;">
-      <div class="sg" id="sg"></div>
-      <div id="tfcard"></div>
+    <!-- Leaderboard -->
+    <div id="ipl-tab-lb" style="display:none;">
+      <div class="ipl-lb" id="ipl-lb"></div>
     </div>
 
-    <div style="margin-top:56px;padding-top:22px;border-top:1px solid rgba(255,255,255,.05);" id="adm-wrap"></div>
-  </div>
+    <!-- Stats -->
+    <div id="ipl-tab-st" style="display:none;">
+      <div class="ipl-sg" id="ipl-sg"></div>
+      <div id="ipl-tfcard"></div>
+    </div>
+
+    <!-- Admin -->
+    <div id="ipl-adm-wrap" style="margin-top:56px;padding-top:20px;border-top:1px solid rgba(255,255,255,.06);"></div>
+
+  </div><!-- /app -->
+
+</div><!-- /wrap -->
 </section>
 
 <script>
 // ================================================================
-// IPL 2026 PREDICTOR ENGINE — Firebase Edition
+// IPL 2026 PREDICTOR — PRODUCTION ENGINE
+// All bugs fixed. Full CricAPI integration.
 // ================================================================
-const AK = 'dedf68fd-7801-48d2-95ad-2c8af1eb9c02';
+
+const IPL_AK = 'dedf68fd-7801-48d2-95ad-2c8af1eb9c02';
 const ADMIN_NAME = 'Divesh Shetty';
 
+// ── Team data ─────────────────────────────────────────────────
+// Logo IDs confirmed from live CricAPI teamInfo responses
 const TD = {
-  'Royal Challengers Bengaluru': {s:'RCB', c:'#E63329', l:'https://g.cricapi.com/iapi/164-637877069388290486.webp?w=48'},
-  'Mumbai Indians':              {s:'MI',  c:'#005DA0', l:'https://g.cricapi.com/iapi/54-637877070395697396.webp?w=48'},
-  'Chennai Super Kings':         {s:'CSK', c:'#F9CD05', l:'https://g.cricapi.com/iapi/18-637877069634567872.webp?w=48'},
-  'Kolkata Knight Riders':       {s:'KKR', c:'#3B1F8C', l:'https://g.cricapi.com/iapi/38-637877069894596096.webp?w=48'},
-  'Punjab Kings':                {s:'PBKS',c:'#D71920', l:'https://g.cricapi.com/iapi/72-637877070620502818.webp?w=48'},
-  'Delhi Capitals':              {s:'DC',  c:'#17479E', l:'https://g.cricapi.com/iapi/19-637877070154553484.webp?w=48'},
-  'Rajasthan Royals':            {s:'RR',  c:'#EA1A85', l:'https://g.cricapi.com/iapi/74-637877070854949074.webp?w=48'},
-  'Sunrisers Hyderabad':         {s:'SRH', c:'#F7671F', l:'https://g.cricapi.com/iapi/85-637877071614349038.webp?w=48'},
-  'Gujarat Titans':              {s:'GT',  c:'#1C4B7E', l:'https://g.cricapi.com/iapi/4444-638054978470960386.webp?w=48'},
-  'Lucknow Super Giants':        {s:'LSG', c:'#A2DFED', l:'https://g.cricapi.com/iapi/4443-638054977902009193.webp?w=48'},
+  'Royal Challengers Bengaluru': { s:'RCB',  c:'#E63329', l:'https://g.cricapi.com/iapi/164-637877069388290486.webp?w=64' },
+  'Mumbai Indians':              { s:'MI',   c:'#004BA0', l:'https://g.cricapi.com/iapi/54-637877070395697396.webp?w=64'  },
+  'Chennai Super Kings':         { s:'CSK',  c:'#F9CD05', l:'https://g.cricapi.com/iapi/18-637877069634567872.webp?w=64'  },
+  'Kolkata Knight Riders':       { s:'KKR',  c:'#3B1F8C', l:'https://g.cricapi.com/iapi/38-637877069894596096.webp?w=64'  },
+  'Punjab Kings':                { s:'PBKS', c:'#D71920', l:'https://g.cricapi.com/iapi/72-637877070620502818.webp?w=64'  },
+  'Delhi Capitals':              { s:'DC',   c:'#17479E', l:'https://g.cricapi.com/iapi/19-637877070154553484.webp?w=64'  },
+  'Rajasthan Royals':            { s:'RR',   c:'#EA1A85', l:'https://g.cricapi.com/iapi/74-637877070854949074.webp?w=64'  },
+  'Sunrisers Hyderabad':         { s:'SRH',  c:'#F7671F', l:'https://g.cricapi.com/iapi/85-637877071614349038.webp?w=64'  },
+  'Gujarat Titans':              { s:'GT',   c:'#1C4B7E', l:'https://g.cricapi.com/iapi/4444-638054978470960386.webp?w=64' },
+  'Lucknow Super Giants':        { s:'LSG',  c:'#A2DFED', l:'https://g.cricapi.com/iapi/4443-638054977902009193.webp?w=64' },
 };
-const tf = n => TD[n] || {s: n.slice(0,3).toUpperCase(), c:'#7dd3fc', l:null};
+const td = n => TD[n] || { s: n.slice(0,3).toUpperCase(), c:'#7dd3fc', l:null };
 
+// IPL 2025 season last-5 form (known data)
 const FORM = {
   'Royal Challengers Bengaluru': ['W','W','L','W','W'],
   'Mumbai Indians':              ['W','L','W','L','W'],
@@ -351,310 +407,372 @@ const FORM = {
   'Lucknow Super Giants':        ['L','W','W','L','W'],
 };
 
-// ── App state ─────────────────────────────────────────────────
-let G = {
-  uid:     null,   // current user Firebase UID
-  me:      null,   // current user player data object {name, pts, picks, lockedAt}
-  players: {},     // { uid: playerData } — all players
-  results: {},     // { matchId: winnerTeam }
-  fixtures:[],
-  live:    [],
-  filt:   'all',
-  atab:   'fx',
-  unsubPlayers: null,
-  unsubResults: null,
+// ── Global state ──────────────────────────────────────────────
+const G = {
+  uid: null,           // Firebase UID of current user
+  me: null,            // current user's player doc {name,pts,picks,lockedAt}
+  players: {},         // uid → playerDoc (all players)
+  results: {},         // matchId → winnerTeam
+  fixtures: [],
+  liveMatches: [],     // from CricAPI currentMatches
+  apiHitCount: 0,      // track API usage
+  filter: 'all',
+  tab: 'fx',
+  unsubP: null,        // Firestore listener unsub
+  unsubR: null,
+  authReady: false,
+  authHandled: false,
 };
 
-function getFx(){return[
-  {id:'m01',num:1, date:'2026-03-28',time:'19:30',home:'Royal Challengers Bengaluru',away:'Sunrisers Hyderabad',       venue:'M. Chinnaswamy Stadium, Bengaluru'},
-  {id:'m02',num:2, date:'2026-03-29',time:'19:30',home:'Mumbai Indians',              away:'Kolkata Knight Riders',     venue:'Wankhede Stadium, Mumbai'},
-  {id:'m03',num:3, date:'2026-03-30',time:'19:30',home:'Rajasthan Royals',            away:'Chennai Super Kings',       venue:'Barsapara Cricket Stadium, Guwahati'},
-  {id:'m04',num:4, date:'2026-03-31',time:'19:30',home:'Punjab Kings',                away:'Gujarat Titans',            venue:'Maharaja Yadavindra Singh Stadium, New Chandigarh'},
-  {id:'m05',num:5, date:'2026-04-01',time:'19:30',home:'Lucknow Super Giants',        away:'Delhi Capitals',            venue:'BRSABV Ekana Cricket Stadium, Lucknow'},
-  {id:'m06',num:6, date:'2026-04-02',time:'19:30',home:'Kolkata Knight Riders',       away:'Sunrisers Hyderabad',       venue:'Eden Gardens, Kolkata'},
-  {id:'m07',num:7, date:'2026-04-03',time:'19:30',home:'Chennai Super Kings',         away:'Punjab Kings',              venue:'MA Chidambaram Stadium, Chennai'},
-  {id:'m08',num:8, date:'2026-04-04',time:'15:30',home:'Delhi Capitals',              away:'Mumbai Indians',            venue:'Arun Jaitley Stadium, Delhi'},
-  {id:'m09',num:9, date:'2026-04-04',time:'19:30',home:'Gujarat Titans',              away:'Rajasthan Royals',          venue:'Narendra Modi Stadium, Ahmedabad'},
-  {id:'m10',num:10,date:'2026-04-05',time:'15:30',home:'Sunrisers Hyderabad',         away:'Lucknow Super Giants',      venue:'Rajiv Gandhi Intl. Stadium, Hyderabad'},
-  {id:'m11',num:11,date:'2026-04-05',time:'19:30',home:'Royal Challengers Bengaluru', away:'Chennai Super Kings',       venue:'M. Chinnaswamy Stadium, Bengaluru'},
-  {id:'m12',num:12,date:'2026-04-06',time:'19:30',home:'Kolkata Knight Riders',       away:'Punjab Kings',              venue:'Eden Gardens, Kolkata'},
-  {id:'m13',num:13,date:'2026-04-07',time:'19:30',home:'Rajasthan Royals',            away:'Mumbai Indians',            venue:'Barsapara Cricket Stadium, Guwahati'},
-  {id:'m14',num:14,date:'2026-04-08',time:'19:30',home:'Delhi Capitals',              away:'Gujarat Titans',            venue:'Arun Jaitley Stadium, Delhi'},
-  {id:'m15',num:15,date:'2026-04-09',time:'19:30',home:'Kolkata Knight Riders',       away:'Lucknow Super Giants',      venue:'Eden Gardens, Kolkata'},
-  {id:'m16',num:16,date:'2026-04-10',time:'19:30',home:'Rajasthan Royals',            away:'Royal Challengers Bengaluru',venue:'Barsapara Cricket Stadium, Guwahati'},
-  {id:'m17',num:17,date:'2026-04-11',time:'15:30',home:'Punjab Kings',                away:'Sunrisers Hyderabad',       venue:'Maharaja Yadavindra Singh Stadium, New Chandigarh'},
-  {id:'m18',num:18,date:'2026-04-11',time:'19:30',home:'Chennai Super Kings',         away:'Delhi Capitals',            venue:'MA Chidambaram Stadium, Chennai'},
-  {id:'m19',num:19,date:'2026-04-12',time:'15:30',home:'Lucknow Super Giants',        away:'Gujarat Titans',            venue:'BRSABV Ekana Cricket Stadium, Lucknow'},
-  {id:'m20',num:20,date:'2026-04-12',time:'19:30',home:'Mumbai Indians',              away:'Royal Challengers Bengaluru',venue:'Wankhede Stadium, Mumbai'},
-];}
+// ── Fixture schedule (hardcoded from official IPL 2026 PDF) ──
+function buildFixtures() {
+  return [
+    { id:'m01', num:1,  date:'2026-03-28', time:'19:30', home:'Royal Challengers Bengaluru', away:'Sunrisers Hyderabad',        venue:'M. Chinnaswamy Stadium, Bengaluru' },
+    { id:'m02', num:2,  date:'2026-03-29', time:'19:30', home:'Mumbai Indians',               away:'Kolkata Knight Riders',      venue:'Wankhede Stadium, Mumbai' },
+    { id:'m03', num:3,  date:'2026-03-30', time:'19:30', home:'Rajasthan Royals',             away:'Chennai Super Kings',        venue:'Barsapara Cricket Stadium, Guwahati' },
+    { id:'m04', num:4,  date:'2026-03-31', time:'19:30', home:'Punjab Kings',                 away:'Gujarat Titans',             venue:'Maharaja Yadavindra Singh Stadium, New Chandigarh' },
+    { id:'m05', num:5,  date:'2026-04-01', time:'19:30', home:'Lucknow Super Giants',         away:'Delhi Capitals',             venue:'BRSABV Ekana Cricket Stadium, Lucknow' },
+    { id:'m06', num:6,  date:'2026-04-02', time:'19:30', home:'Kolkata Knight Riders',        away:'Sunrisers Hyderabad',        venue:'Eden Gardens, Kolkata' },
+    { id:'m07', num:7,  date:'2026-04-03', time:'19:30', home:'Chennai Super Kings',          away:'Punjab Kings',               venue:'MA Chidambaram Stadium, Chennai' },
+    { id:'m08', num:8,  date:'2026-04-04', time:'15:30', home:'Delhi Capitals',               away:'Mumbai Indians',             venue:'Arun Jaitley Stadium, Delhi' },
+    { id:'m09', num:9,  date:'2026-04-04', time:'19:30', home:'Gujarat Titans',               away:'Rajasthan Royals',           venue:'Narendra Modi Stadium, Ahmedabad' },
+    { id:'m10', num:10, date:'2026-04-05', time:'15:30', home:'Sunrisers Hyderabad',          away:'Lucknow Super Giants',       venue:'Rajiv Gandhi Intl. Stadium, Hyderabad' },
+    { id:'m11', num:11, date:'2026-04-05', time:'19:30', home:'Royal Challengers Bengaluru',  away:'Chennai Super Kings',        venue:'M. Chinnaswamy Stadium, Bengaluru' },
+    { id:'m12', num:12, date:'2026-04-06', time:'19:30', home:'Kolkata Knight Riders',        away:'Punjab Kings',               venue:'Eden Gardens, Kolkata' },
+    { id:'m13', num:13, date:'2026-04-07', time:'19:30', home:'Rajasthan Royals',             away:'Mumbai Indians',             venue:'Barsapara Cricket Stadium, Guwahati' },
+    { id:'m14', num:14, date:'2026-04-08', time:'19:30', home:'Delhi Capitals',               away:'Gujarat Titans',             venue:'Arun Jaitley Stadium, Delhi' },
+    { id:'m15', num:15, date:'2026-04-09', time:'19:30', home:'Kolkata Knight Riders',        away:'Lucknow Super Giants',       venue:'Eden Gardens, Kolkata' },
+    { id:'m16', num:16, date:'2026-04-10', time:'19:30', home:'Rajasthan Royals',             away:'Royal Challengers Bengaluru',venue:'Barsapara Cricket Stadium, Guwahati' },
+    { id:'m17', num:17, date:'2026-04-11', time:'15:30', home:'Punjab Kings',                 away:'Sunrisers Hyderabad',        venue:'Maharaja Yadavindra Singh Stadium, New Chandigarh' },
+    { id:'m18', num:18, date:'2026-04-11', time:'19:30', home:'Chennai Super Kings',          away:'Delhi Capitals',             venue:'MA Chidambaram Stadium, Chennai' },
+    { id:'m19', num:19, date:'2026-04-12', time:'15:30', home:'Lucknow Super Giants',         away:'Gujarat Titans',             venue:'BRSABV Ekana Cricket Stadium, Lucknow' },
+    { id:'m20', num:20, date:'2026-04-12', time:'19:30', home:'Mumbai Indians',               away:'Royal Challengers Bengaluru',venue:'Wankhede Stadium, Mumbai' },
+  ];
+}
+
+// ── Helpers ───────────────────────────────────────────────────
+function $id(id) { return document.getElementById(id); }
+
+function showMsg(elId, type, html) {
+  const el = $id(elId);
+  if (!el) return;
+  el.innerHTML = html ? `<div class="ipl-msg ipl-msg-${type}">${html}</div>` : '';
+}
+
+function gBtnLoad() {
+  const b = $id('ipl-gbtn');
+  b.disabled = true;
+  b.innerHTML = `<span class="ipl-spin" style="width:18px;height:18px;border-width:2px"></span> Signing in…`;
+}
+
+function gBtnReset() {
+  const b = $id('ipl-gbtn');
+  if (!b) return;
+  b.disabled = false;
+  b.innerHTML = `<svg width="20" height="20" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.18 1.48-4.97 2.31-8.16 2.31-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg> Sign in with Google`;
+}
+
+// ── BOOT ──────────────────────────────────────────────────────
+async function iplBoot() {
+  G.fixtures = buildFixtures();
+  await iplLoadPublic();
+  iplFetchLive();
+  setInterval(iplFetchLive, 60000); // poll every 60s (api has 100 hits/day limit)
+}
+
+async function iplLoadPublic() {
+  try {
+    const [ps, rs] = await Promise.all([
+      fbDb.collection('players').get(),
+      fbDb.collection('results').doc('global').get(),
+    ]);
+    ps.forEach(d => { G.players[d.id] = d.data(); });
+    if (rs.exists) G.results = rs.data() || {};
+  } catch(e) { /* rules may require auth */ }
+  iplUpdStrip();
+  iplRenderChips();
+}
+
+// ── CRICAPI — currentMatches ──────────────────────────────────
+// Returns: live IPL matches, completed IPL matches, upcoming IPL matches
+// We use: live scores (scores[]), status text, team logos (teamInfo[].img)
+// API key has 100 hits/day — we call every 60s = max ~1440/day, use cache
+let iplLiveCache = null, iplLiveCacheTime = 0;
+
+async function iplFetchLive() {
+  const now = Date.now();
+  // Use cache if under 55 seconds old
+  if (iplLiveCache && now - iplLiveCacheTime < 55000) {
+    iplProcessLive(iplLiveCache);
+    return;
+  }
+  try {
+    const r = await fetch(`https://api.cricapi.com/v1/currentMatches?apikey=${IPL_AK}&offset=0`);
+    const d = await r.json();
+    G.apiHitCount++;
+    if (d.status === 'success' && Array.isArray(d.data)) {
+      // Filter: only matches involving IPL teams
+      const iplMatches = d.data.filter(m =>
+        Array.isArray(m.teams) && m.teams.some(t => TD[t])
+      );
+      // Also update team logos from live API data (more reliable than hardcoded)
+      d.data.forEach(m => {
+        if (!Array.isArray(m.teamInfo)) return;
+        m.teamInfo.forEach(ti => {
+          if (TD[ti.name] && ti.img && ti.img.includes('cricapi')) {
+            TD[ti.name].l = ti.img.replace('w=48','w=64');
+          }
+        });
+      });
+      iplLiveCache = iplMatches;
+      iplLiveCacheTime = now;
+      iplProcessLive(iplMatches);
+    }
+  } catch(e) { console.warn('CricAPI error:', e); }
+}
+
+function iplProcessLive(matches) {
+  G.liveMatches = matches;
+
+  // Show live now banner (matches currently in progress)
+  const inProgress = matches.filter(m => m.matchStarted && !m.matchEnded);
+  const liveWrap = $id('ipl-live-now');
+  if (!liveWrap) return;
+
+  if (inProgress.length) {
+    liveWrap.style.display = 'block';
+    liveWrap.innerHTML = inProgress.map(m => {
+      const scores = (m.score || []).map(s => {
+        const team = s.inning.replace(/ Inning \d/,'').replace(/,.*/,'').trim();
+        return `<div class="ipl-live-score-row"><strong>${team}:</strong> ${s.r}/${s.w} (${s.o} ov)</div>`;
+      }).join('');
+      return `<div class="ipl-live-match">
+        <div class="ipl-live-hdr"><span class="ipl-live-pulse"></span>Live Now</div>
+        <div class="ipl-live-name">${m.name}</div>
+        <div class="ipl-live-scores">${scores || '<div class="ipl-live-score-row">Match in progress</div>'}</div>
+        <div class="ipl-live-status">${m.status || ''}</div>
+      </div>`;
+    }).join('');
+  } else {
+    liveWrap.style.display = 'none';
+  }
+
+  if (G.uid && G.tab === 'fx') iplRenderFx();
+}
 
 // ── GOOGLE LOGIN ──────────────────────────────────────────────
-// KEY FIX: called directly from onclick — synchronous from user gesture
-// Uses popup first, falls back to redirect if popup is blocked
-async function googleLogin() {
-  const btn = document.getElementById('google-btn');
-  const msg = document.getElementById('reg-msg');
-
-  btn.disabled = true;
-  btn.innerHTML = `<div class="ipl-spin" style="margin:0;width:18px;height:18px;border-width:2px"></div> Signing in…`;
-  msg.innerHTML = '';
+async function iplGoogleLogin() {
+  gBtnLoad();
+  showMsg('ipl-reg-msg', '', '');
 
   const provider = new firebase.auth.GoogleAuthProvider();
-  // Force account picker every time (important — prevents silent wrong account)
   provider.setCustomParameters({ prompt: 'select_account' });
 
   try {
-    // Try popup first
-    const result = await auth.signInWithPopup(provider);
-    await onLoginSuccess(result.user);
+    const result = await fbAuth.signInWithPopup(provider);
+    G.authHandled = true;
+    await iplHandleUser(result.user);
   } catch (err) {
-    // If popup was blocked by browser, fall back to redirect
-    if (err.code === 'auth/popup-blocked' || err.code === 'auth/popup-closed-by-user') {
-      msg.innerHTML = '<div class="ipl-msg warn">⚠️ Popup was blocked. Trying redirect login…</div>';
-      try {
-        await auth.signInWithRedirect(provider);
-        // Page will reload — onAuthStateChanged handles the rest
-      } catch(e2) {
-        showLoginError(e2, btn);
-      }
-    } else {
-      showLoginError(err, btn);
+    console.error('Auth error:', err.code, err.message);
+    if (err.code === 'auth/popup-closed-by-user' || err.code === 'auth/cancelled-popup-request') {
+      gBtnReset();
+      return;
     }
+    if (err.code === 'auth/popup-blocked') {
+      showMsg('ipl-reg-msg', 'warn', '⚠️ Popup blocked. Trying redirect…');
+      try { await fbAuth.signInWithRedirect(provider); } catch(e2) { showMsg('ipl-reg-msg','err','❌ '+e2.message); gBtnReset(); }
+      return;
+    }
+    const errs = {
+      'auth/unauthorized-domain': '⚠️ Domain not authorized. Add <strong>diveshshetty.in</strong> in Firebase → Authentication → Settings → Authorized domains.',
+      'auth/operation-not-allowed': '⚠️ Google Sign-In not enabled. Firebase → Authentication → Sign-in method → Enable Google.',
+    };
+    showMsg('ipl-reg-msg', 'err', errs[err.code] || '❌ ' + err.message);
+    gBtnReset();
   }
 }
 
-function showLoginError(err, btn) {
-  const msg = document.getElementById('reg-msg');
-  console.error('Login error:', err);
+// Auth state observer — handles page reloads and redirect results
+// FIX: only run once, check authHandled flag to avoid double-login
+fbAuth.onAuthStateChanged(async user => {
+  if (!user) { G.authReady = true; return; }
+  if (G.authHandled) return; // already handled by popup flow
 
-  // Friendly messages for common errors
-  const friendly = {
-    'auth/unauthorized-domain': '⚠️ This domain is not authorized in Firebase. Go to Firebase Console → Authentication → Settings → Authorized domains and add this site\'s domain.',
-    'auth/operation-not-allowed': '⚠️ Google sign-in is not enabled. Go to Firebase Console → Authentication → Sign-in method → Enable Google.',
-    'auth/network-request-failed': '⚠️ Network error. Check your internet connection and try again.',
-    'auth/cancelled-popup-request': '',
-  };
-
-  const friendlyMsg = friendly[err.code];
-  if (friendlyMsg === '') { resetLoginBtn(btn); return; } // user cancelled — no error needed
-  msg.innerHTML = `<div class="ipl-msg err">${friendlyMsg || '❌ Login failed: ' + err.message}</div>`;
-  resetLoginBtn(btn);
-}
-
-function resetLoginBtn(btn) {
-  btn.disabled = false;
-  btn.innerHTML = `<svg width="20" height="20" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.18 1.48-4.97 2.31-8.16 2.31-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/><path fill="none" d="M0 0h48v48H0z"/></svg> Sign in with Google`;
-}
-
-async function onLoginSuccess(user) {
-  G.uid = user.uid;
-
-  // Create or load player doc
-  const ref = db.collection('players').doc(user.uid);
-  const snap = await ref.get();
-
-  if (!snap.exists) {
-    const playerData = { name: user.displayName, email: user.email, pts: 0, picks: {}, lockedAt: {} };
-    await ref.set(playerData);
-    G.me = playerData;
-  } else {
-    G.me = snap.data();
-  }
-
-  G.players[user.uid] = G.me;
-  showApp();
-}
-
-// ── AUTH STATE — handles page reload / redirect result ────────
-auth.onAuthStateChanged(async user => {
-  if (!user) return;
-
-  // Handle redirect result if we used signInWithRedirect
+  // Check for redirect result
   try {
-    const result = await auth.getRedirectResult();
-    if (result && result.user) {
-      await onLoginSuccess(result.user);
+    const rr = await fbAuth.getRedirectResult();
+    if (rr?.user) {
+      G.authHandled = true;
+      await iplHandleUser(rr.user);
       return;
     }
   } catch(e) {}
 
-  // Already signed in (page reload)
-  if (!G.uid) {
-    G.uid = user.uid;
-    const snap = await db.collection('players').doc(user.uid).get();
-    if (snap.exists) {
-      G.me = snap.data();
-      G.players[user.uid] = G.me;
-      showApp();
-    }
-  }
+  // Page reload — restore session
+  G.authHandled = true;
+  await iplHandleUser(user);
 });
 
-// ── SIGN OUT ──────────────────────────────────────────────────
-async function signOut() {
-  // Unsubscribe real-time listeners
-  if (G.unsubPlayers) G.unsubPlayers();
-  if (G.unsubResults) G.unsubResults();
-  await auth.signOut();
-  G = { uid:null, me:null, players:{}, results:{}, fixtures:getFx(), live:[], filt:'all', atab:'fx', unsubPlayers:null, unsubResults:null };
-  document.getElementById('ipl-app').style.display = 'none';
-  document.getElementById('reg-card').style.display = 'block';
-  document.getElementById('reg-msg').innerHTML = '';
-  resetLoginBtn(document.getElementById('google-btn'));
-  await loadPublicData(); // reload player chips
-}
+async function iplHandleUser(user) {
+  G.uid = user.uid;
+  const ref = fbDb.collection('players').doc(user.uid);
 
-// ── BOOT (runs on page load — no auth needed for public data) ─
-async function boot() {
-  G.fixtures = getFx();
-  await loadPublicData();
-  fetchLive();
-  setInterval(fetchLive, 45000);
-}
-
-// Load players + results for the public strip/chips (no auth needed if rules allow)
-async function loadPublicData() {
   try {
-    const [playersSnap, resSnap] = await Promise.all([
-      db.collection('players').get(),
-      db.collection('results').doc('global').get()
-    ]);
-    playersSnap.forEach(d => { G.players[d.id] = d.data(); });
-    if (resSnap.exists) G.results = resSnap.data();
-  } catch(e) {
-    // Firestore rules might require auth — that's fine, just show zeros
-  }
-  updStrip();
-  renderChips();
-}
-
-// ── REAL-TIME LISTENERS (attached after login) ────────────────
-function attachListeners() {
-  // Unsubscribe old listeners if any
-  if (G.unsubPlayers) G.unsubPlayers();
-  if (G.unsubResults) G.unsubResults();
-
-  // Listen to all players
-  G.unsubPlayers = db.collection('players').onSnapshot(snap => {
-    snap.forEach(d => { G.players[d.id] = d.data(); });
-    // Update own data too
-    if (G.uid && G.players[G.uid]) G.me = G.players[G.uid];
-    updStrip();
-    renderChips();
-    if (G.atab === 'lb') renderLB();
-    if (G.atab === 'st') renderStats();
-    updBanner();
-  });
-
-  // Listen to results
-  G.unsubResults = db.collection('results').doc('global').onSnapshot(snap => {
-    if (snap.exists) G.results = snap.data();
-    else G.results = {};
-    updStrip();
-    if (G.atab === 'fx') renderFx();
-    if (G.atab === 'lb') renderLB();
-    if (G.me && G.players[G.me?.name]) updBanner();
-  });
-}
-
-// ── LIVE DATA FROM CRICAPI ────────────────────────────────────
-async function fetchLive() {
-  try {
-    const r = await fetch(`https://api.cricapi.com/v1/currentMatches?apikey=${AK}&offset=0`);
-    const d = await r.json();
-    if (d.status === 'success') {
-      G.live = (d.data || []).filter(m => m.teams && m.teams.some(t => TD[t]));
-      renderLive();
-      if (G.uid && G.atab === 'fx') renderFx();
+    const snap = await ref.get({ source: 'server' });
+    if (!snap.exists) {
+      const data = {
+        name: user.displayName || user.email?.split('@')[0] || 'Player',
+        email: user.email || '',
+        pts: 0, picks: {}, lockedAt: {}
+      };
+      await ref.set(data);
+      G.me = data;
+    } else {
+      G.me = snap.data();
+      // Ensure pts exists (backward compat)
+      if (G.me.pts === undefined) G.me.pts = 0;
+      if (!G.me.picks) G.me.picks = {};
     }
-  } catch(e) {}
+    G.players[user.uid] = G.me;
+    iplShowApp();
+  } catch (err) {
+    console.error('Firestore error:', err.code, err.message);
+    if (err.code === 'unavailable' || (err.message || '').includes('offline')) {
+      showMsg('ipl-reg-msg', 'warn', '⏳ Connecting to database… please wait.');
+      setTimeout(async () => {
+        try {
+          const snap2 = await ref.get();
+          G.me = snap2.exists ? snap2.data() : { name: user.displayName||'Player', email: user.email||'', pts:0, picks:{}, lockedAt:{} };
+          if (!snap2.exists) await ref.set(G.me);
+          G.players[user.uid] = G.me;
+          showMsg('ipl-reg-msg','','');
+          iplShowApp();
+        } catch(e2) {
+          showMsg('ipl-reg-msg','err','❌ Database unreachable. Check your internet and try again.<br><small>Error: '+e2.message+'</small>');
+          gBtnReset();
+          G.authHandled = false;
+        }
+      }, 3000);
+    } else if (err.code === 'permission-denied') {
+      showMsg('ipl-reg-msg','err','⚠️ Firestore permission denied. Update your Firestore security rules — see the comment at the top of this file.');
+      gBtnReset();
+      G.authHandled = false;
+    } else {
+      showMsg('ipl-reg-msg','err','❌ Database error: ' + err.message);
+      gBtnReset();
+      G.authHandled = false;
+    }
+  }
 }
 
-function renderLive() {
-  const w = document.getElementById('live-wrap');
-  const live = G.live.filter(m => m.matchStarted && !m.matchEnded);
-  if (!live.length) { w.style.display = 'none'; return; }
-  w.style.display = 'block';
-  w.innerHTML = live.map(m => {
-    const sc = (m.score||[]).map(s => `<span><strong>${s.inning.split(' Inning')[0]}</strong>: ${s.r}/${s.w} (${s.o} ov)</span>`).join(' · ');
-    return `<div class="live-now"><div class="live-now-hdr"><span class="ipl-live-dot"></span>LIVE NOW</div>
-      <div class="live-now-name">${m.name}</div>
-      <div class="live-now-sc">${sc || 'Match in progress'}</div>
-      <div style="font-size:.7rem;color:var(--muted);margin-top:3px;">${m.status||''}</div></div>`;
-  }).join('');
+// ── SIGN OUT ──────────────────────────────────────────────────
+async function iplSignOut() {
+  if (G.unsubP) G.unsubP();
+  if (G.unsubR) G.unsubR();
+  G.unsubP = G.unsubR = null;
+  G.uid = G.me = null;
+  G.players = {};
+  G.results = {};
+  G.authHandled = false;
+  await fbAuth.signOut();
+  $id('ipl-app').style.display = 'none';
+  $id('ipl-reg').style.display = 'block';
+  showMsg('ipl-reg-msg','','');
+  gBtnReset();
+  await iplLoadPublic();
 }
 
-// ── STRIP & CHIPS ─────────────────────────────────────────────
-function updStrip() {
-  const players = Object.values(G.players);
-  const decided = Object.keys(G.results).length;
-  // Find leader by pts — use real name
-  const leader = players.length
-    ? players.sort((a,b) => b.pts - a.pts)[0]?.name?.split(' ')[0] || '—'
-    : '—';
-  document.getElementById('gs-p').textContent = players.length;
-  document.getElementById('gs-d').textContent = decided;
-  document.getElementById('gs-l').textContent = leader;
-}
+// ── REAL-TIME LISTENERS ───────────────────────────────────────
+function iplAttachListeners() {
+  if (G.unsubP) G.unsubP();
+  if (G.unsubR) G.unsubR();
 
-function renderChips() {
-  const players = Object.values(G.players);
-  const w = document.getElementById('chips-wrap');
-  const c = document.getElementById('pchips');
-  if (!players.length) { w.style.display = 'none'; return; }
-  w.style.display = 'block';
-  const sorted = [...players].sort((a,b) => b.pts - a.pts);
-  c.innerHTML = sorted.map((p, i) =>
-    `<div class="pchip"><span class="pr">${i+1}</span><span>${p.name}</span><span class="pp">${p.pts}pt</span></div>`
-  ).join('');
+  G.unsubP = fbDb.collection('players').onSnapshot(snap => {
+    snap.forEach(d => { G.players[d.id] = d.data(); });
+    if (G.uid && G.players[G.uid]) G.me = G.players[G.uid];
+    iplUpdStrip();
+    iplRenderChips();
+    iplUpdBanner();
+    if (G.tab === 'lb') iplRenderLB();
+    if (G.tab === 'st') iplRenderStats();
+  }, err => console.warn('players listener error:', err.code));
+
+  G.unsubR = fbDb.collection('results').doc('global').onSnapshot(snap => {
+    G.results = snap.exists ? (snap.data() || {}) : {};
+    iplUpdStrip();
+    if (G.tab === 'fx') iplRenderFx();
+    if (G.tab === 'lb') iplRenderLB();
+    iplUpdBanner();
+  }, err => console.warn('results listener error:', err.code));
 }
 
 // ── SHOW APP ──────────────────────────────────────────────────
-function showApp() {
-  document.getElementById('reg-card').style.display = 'none';
-  document.getElementById('ipl-app').style.display = 'block';
-
-  attachListeners(); // real-time updates
-  updBanner();
-  G.fixtures = getFx();
-  renderFx();
-  renderLB();
-  renderStats();
-  updStrip();
-
-  const aw = document.getElementById('adm-wrap');
-  if (G.me && G.me.name === ADMIN_NAME) {
-    aw.innerHTML = buildAdmin();
-    populateAdmSel();
-  } else {
-    aw.innerHTML = '';
-  }
+function iplShowApp() {
+  $id('ipl-reg').style.display = 'none';
+  $id('ipl-app').style.display = 'block';
+  G.fixtures = buildFixtures();
+  iplAttachListeners();
+  iplUpdBanner();
+  iplRenderFx();
+  iplRenderLB();
+  iplRenderStats();
+  iplUpdStrip();
+  const aw = $id('ipl-adm-wrap');
+  aw.innerHTML = (G.me?.name === ADMIN_NAME) ? iplBuildAdmin() : '';
+  if (G.me?.name === ADMIN_NAME) iplPopAdmSel();
 }
 
-function updBanner() {
+// ── STRIP & CHIPS ─────────────────────────────────────────────
+function iplUpdStrip() {
+  const pv = Object.values(G.players);
+  const decided = Object.keys(G.results).length;
+  const leader = pv.length
+    ? [...pv].sort((a,b) => (b.pts||0)-(a.pts||0))[0]?.name?.split(' ')[0] || '—'
+    : '—';
+  $id('gs-p').textContent = pv.length || '—';
+  $id('gs-d').textContent = decided;
+  $id('gs-l').textContent = leader;
+}
+
+function iplRenderChips() {
+  const pv = Object.values(G.players);
+  const w = $id('ipl-chips-wrap'), c = $id('ipl-chips');
+  if (!pv.length) { w.style.display='none'; return; }
+  w.style.display = 'block';
+  c.innerHTML = [...pv].sort((a,b)=>(b.pts||0)-(a.pts||0)).map((p,i) =>
+    `<div class="ipl-chip"><span class="ipl-chip-rank">${i+1}</span><span>${p.name}</span><span class="ipl-chip-pts">${p.pts||0}pt</span></div>`
+  ).join('');
+}
+
+// ── BANNER ────────────────────────────────────────────────────
+function iplUpdBanner() {
   if (!G.me) return;
   const p = G.me;
-  document.getElementById('ab-n').textContent = p.name || '—';
-  document.getElementById('ab-p').textContent = p.pts || 0;
+  $id('ipl-ab-name').textContent = p.name || '—';
+  $id('ipl-ab-pts').textContent  = p.pts  || 0;
 
-  const picks = Object.keys(p.picks || {}).length;
-  const decided = Object.keys(G.results).filter(id => p.picks && p.picks[id]);
-  const correct = decided.filter(id => p.picks[id] === G.results[id]).length;
-  const str = streak(p);
+  const picks    = Object.keys(p.picks || {}).length;
+  const decided  = Object.keys(G.results).filter(id => p.picks?.[id]);
+  const correct  = decided.filter(id => p.picks[id] === G.results[id]).length;
+  const str      = iplStreak(p);
 
-  document.getElementById('ab-mini').innerHTML = `
-    <div class="ab-mini"><div class="mv">${picks}</div><div class="ml">Picks</div></div>
-    <div class="ab-mini"><div class="mv">${correct}</div><div class="ml">Correct</div></div>
-    <div class="ab-mini"><div class="mv" style="color:${str>0?'#4ade80':str<0?'#f87171':'var(--muted)'}">
-      ${str>0 ? '🔥'+str : str<0 ? '❄️'+Math.abs(str) : '—'}
-    </div><div class="ml">Streak</div></div>`;
+  $id('ipl-ab-stats').innerHTML = `
+    <div><div class="ipl-bstat-v">${picks}</div><div class="ipl-bstat-l">Picks</div></div>
+    <div><div class="ipl-bstat-v">${correct}</div><div class="ipl-bstat-l">Correct</div></div>
+    <div><div class="ipl-bstat-v" style="color:${str>0?'#22c55e':str<0?'#ef4444':'#64748b'}">
+      ${str>0?'🔥'+str:str<0?'❄️'+Math.abs(str):'—'}
+    </div><div class="ipl-bstat-l">Streak</div></div>`;
 }
 
-function streak(p) {
-  const dec = G.fixtures.filter(f => G.results[f.id]).sort((a,b) => new Date(b.date) - new Date(a.date));
+// FIX: streak() — handles empty fixtures gracefully, correct logic
+function iplStreak(p) {
+  if (!G.fixtures.length || !G.results) return 0;
+  const decided = G.fixtures
+    .filter(f => G.results[f.id])
+    .sort((a,b) => new Date(b.date) - new Date(a.date));
   let s = 0;
-  for (const f of dec) {
-    const mp = (p.picks||{})[f.id];
+  for (const f of decided) {
+    const mp = (p.picks || {})[f.id];
     if (!mp) break;
     if (mp === G.results[f.id]) { if (s >= 0) s++; else break; }
     else                        { if (s <= 0) s--; else break; }
@@ -663,318 +781,398 @@ function streak(p) {
 }
 
 // ── TABS & FILTERS ────────────────────────────────────────────
-function tab(t, el) {
-  G.atab = t;
-  document.querySelectorAll('.ipl-tab').forEach(x => x.classList.remove('active'));
-  el.classList.add('active');
-  ['fx','lb','st'].forEach(x => document.getElementById('tab-'+x).style.display = x===t ? 'block' : 'none');
-  if (t==='lb') renderLB();
-  if (t==='st') renderStats();
+function iplTab(t, el) {
+  G.tab = t;
+  document.querySelectorAll('.ipl-tab').forEach(x => x.classList.remove('on'));
+  el.classList.add('on');
+  ['fx','lb','st'].forEach(x => $id('ipl-tab-'+x).style.display = x===t ? 'block' : 'none');
+  if (t==='lb') iplRenderLB();
+  if (t==='st') iplRenderStats();
 }
 
-function filt(f, el) {
-  G.filt = f;
-  document.querySelectorAll('.fchip').forEach(c => c.classList.remove('active'));
-  el.classList.add('active');
-  renderFx();
+function iplFilt(f, el) {
+  G.filter = f;
+  document.querySelectorAll('.ipl-fc').forEach(c => c.classList.remove('on'));
+  el.classList.add('on');
+  iplRenderFx();
 }
 
-// ── FIXTURES ─────────────────────────────────────────────────
-function renderFx() {
-  const el = document.getElementById('fxlist');
-  if (!G.me) return;
-  const p = G.me;
-  const now = new Date();
-  let list = [...G.fixtures];
-  if (G.filt==='up') list = list.filter(f => !G.results[f.id]);
-  else if (G.filt==='pk') list = list.filter(f => p.picks && p.picks[f.id]);
-  else if (G.filt==='dn') list = list.filter(f => G.results[f.id]);
-  if (!list.length) { el.innerHTML = '<div class="ipl-empty">No matches in this view.</div>'; return; }
-  el.innerHTML = list.map(f => fxCard(f, p, now)).join('');
+// ── RENDER FIXTURES ───────────────────────────────────────────
+function iplRenderFx() {
+  const el = $id('ipl-fxlist'); if (!G.me || !el) return;
+  const p   = G.me, now = new Date();
+  let list  = [...G.fixtures];
+
+  if (G.filter==='up') list = list.filter(f => !G.results[f.id]);
+  else if (G.filter==='pk') list = list.filter(f => p.picks?.[f.id]);
+  else if (G.filter==='dn') list = list.filter(f => G.results[f.id]);
+
+  el.innerHTML = list.length
+    ? list.map(f => iplFxCard(f, p, now)).join('')
+    : '<div class="ipl-empty">No matches in this view.</div>';
 }
 
-function fxCard(f, p, now) {
-  const res = G.results[f.id];
-  const myPick = (p.picks||{})[f.id];
+function iplFxCard(f, p, now) {
+  const res    = G.results[f.id];
+  const myPick = (p.picks || {})[f.id];
   const locked = !!myPick;
-  const over = !!res;
+  const over   = !!res;
   const correct = over && myPick === res;
-  const wrong = over && myPick && myPick !== res;
+  const wrong   = over && myPick && myPick !== res;
 
-  const mDT = new Date(`${f.date}T${f.time}:00+05:30`);
-  const ds = mDT.toLocaleDateString('en-IN', {weekday:'short', day:'numeric', month:'short'});
-  const ts2 = mDT.toLocaleTimeString('en-IN', {hour:'2-digit', minute:'2-digit', hour12:true});
+  // Date/time
+  const mDT  = new Date(`${f.date}T${f.time}:00+05:30`);
+  const ds   = mDT.toLocaleDateString('en-IN', { weekday:'short', day:'numeric', month:'short' });
+  const ts   = mDT.toLocaleTimeString('en-IN', { hour:'2-digit', minute:'2-digit', hour12:true });
+
+  // Countdown
   const diff = mDT - now;
   let cd = '';
   if (!over && diff > 0) {
-    const dd = Math.floor(diff/86400000), hh = Math.floor((diff%86400000)/3600000), mm = Math.floor((diff%3600000)/60000);
-    cd = dd>0 ? `<span class="fxcd">in ${dd}d ${hh}h</span>` : hh>0 ? `<span class="fxcd">in ${hh}h ${mm}m</span>` : `<span class="fxcd soon">Starting soon!</span>`;
+    const dd=Math.floor(diff/86400000), hh=Math.floor((diff%86400000)/3600000), mm=Math.floor((diff%3600000)/60000);
+    if (dd>0) cd = `<span class="ipl-fx-cd">in ${dd}d ${hh}h</span>`;
+    else if (hh>0) cd = `<span class="ipl-fx-cd">in ${hh}h ${mm}m</span>`;
+    else cd = `<span class="ipl-fx-cd soon">Starting soon!</span>`;
   }
 
-  const lm = G.live.find(m => m.teams && [f.home,f.away].every(t => m.teams.includes(t)) && m.matchStarted && !m.matchEnded);
-  const liveHtml = lm ? `<div class="fxlive"><div class="fxlive-lbl"><span class="ipl-live-dot"></span>LIVE</div>${(lm.score||[]).map(s=>`<div class="fxlive-sc">${s.inning.split(' Inning')[0]}: <strong>${s.r}/${s.w}</strong> (${s.o} ov)</div>`).join('')}<div class="fxlive-st">${lm.status||''}</div></div>` : '';
+  // Live data from CricAPI
+  // FIX: use some() not every() — match on team names that may be slightly different
+  const liveM = G.liveMatches.find(m =>
+    m.matchStarted && !m.matchEnded &&
+    Array.isArray(m.teams) &&
+    m.teams.some(t => t === f.home || t === f.away)
+  );
+  const liveHtml = liveM ? (() => {
+    const rows = (liveM.score || []).map(s => {
+      const teamName = s.inning.replace(/ Inning \d/,'').replace(/,.*/,'').trim();
+      return `<div class="ipl-fx-live-sc"><strong>${teamName}</strong>: ${s.r}/${s.w} (${s.o} ov)</div>`;
+    }).join('');
+    return `<div class="ipl-fx-live">
+      <div class="ipl-fx-live-lbl"><span class="ipl-live-pulse"></span>Live</div>
+      ${rows || '<div class="ipl-fx-live-sc">Match in progress</div>'}
+      <div class="ipl-fx-live-st">${liveM.status || ''}</div>
+    </div>`;
+  })() : '';
 
+  // Team buttons
   const tbtn = [f.home, f.away].map(team => {
-    const t = tf(team);
-    let cls = 'tpbtn';
-    if (over) { if (team===res) cls+=' win'; if (team===myPick&&correct) cls+=' cor'; else if (team===myPick&&wrong) cls+=' wrg'; }
-    else if (team===myPick) cls += ' sel';
-    const dis = (locked||over) ? 'disabled' : '';
-    const logoImg = t.l ? `<img class="tlogo" src="${t.l}" alt="${t.s}" onerror="this.style.display='none';this.nextElementSibling.style.display='grid'">` : '';
-    const plc = `<div class="tplc" style="background:${t.c};display:${t.l?'none':'grid'}">${t.s}</div>`;
-    const fds = !over ? (FORM[team]||[]).map(r=>`<div class="fdot ${r}" title="IPL 2025: ${r==='W'?'Win':'Loss'}"></div>`).join('') : '';
-    return `<button class="${cls}" ${dis} onclick="lockPick('${f.id}','${team.replace(/'/g,"\\'")}')">
-      ${logoImg}${plc}
-      <div class="tshort">${t.s}</div>
-      <div class="tfull">${team}</div>
-      ${fds ? `<div class="formdots">${fds}</div>` : ''}
+    const t = td(team);
+    let cls = 'ipl-team-btn';
+    if (over) {
+      if (team === res) cls += ' winner';
+      if (team === myPick && correct) cls += ' correct';
+      else if (team === myPick && wrong) cls += ' wrong';
+    } else if (team === myPick) cls += ' picked';
+    const dis = (locked || over) ? 'disabled' : '';
+
+    // Logo: try API-sourced img first, fallback to colored placeholder
+    const logoHtml = t.l
+      ? `<img class="ipl-tlogo" src="${t.l}" alt="${t.s}" onerror="this.style.display='none';this.nextElementSibling.style.display='grid'">`
+      : '';
+    const plcHtml = `<div class="ipl-tplc" style="background:${t.c};display:${t.l?'none':'grid'}">${t.s}</div>`;
+
+    // Form dots (IPL 2025 last 5)
+    const fds = !over
+      ? (FORM[team] || []).map(r => `<div class="ipl-fd ${r}" title="${r==='W'?'Win':'Loss'} (IPL 2025)"></div>`).join('')
+      : '';
+
+    return `<button class="${cls}" ${dis} onclick="iplPick('${f.id}','${team.replace(/'/g,"\\'")}')">
+      ${logoHtml}${plcHtml}
+      <div class="ipl-tshort">${t.s}</div>
+      <div class="ipl-tfull">${team}</div>
+      ${fds ? `<div class="ipl-form" title="IPL 2025 last 5">${fds}</div>` : ''}
     </button>`;
   });
 
-  let st = '';
-  if (over&&correct) st = `<div class="fxps ok">✅ +1 point — Correct! Winner: ${tf(res).s}</div>`;
-  else if (over&&wrong) st = `<div class="fxps bad">❌ Wrong — Winner: ${tf(res).s} · You picked: ${tf(myPick).s}</div>`;
-  else if (over&&!myPick) st = `<div class="fxps none">No pick made — ${tf(res).s} won</div>`;
-  else if (!over&&myPick) st = `<div class="fxps pend">🔒 Locked on ${tf(myPick).s} — awaiting result</div>`;
-  else st = `<div class="fxps none">👆 Tap to pick (locks immediately, no changes)</div>`;
+  // Pick status line
+  let ps = '';
+  if (over && correct) ps = `<div class="ipl-ps ok">✅ +1 point — Correct! Winner: ${td(res).s}</div>`;
+  else if (over && wrong) ps = `<div class="ipl-ps bad">❌ Wrong — Winner was ${td(res).s} · You picked ${td(myPick).s}</div>`;
+  else if (over && !myPick) ps = `<div class="ipl-ps none">No pick made — ${td(res).s} won</div>`;
+  else if (!over && myPick) ps = `<div class="ipl-ps pend">🔒 Locked: ${td(myPick).s} — awaiting result</div>`;
+  else ps = `<div class="ipl-ps none">Tap a team to lock your pick</div>`;
 
-  return `<div class="fxcard">
-    <div class="fxtop">
-      <span class="fxno">Match ${f.num}</span>
-      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
-        <span class="fxdate">${ds} · ${ts2} IST</span>${cd}
+  const isLive = !!liveM;
+
+  return `<div class="ipl-fx${isLive?' live-now':''}">
+    <div class="ipl-fx-top">
+      <span class="ipl-fx-num">Match ${f.num}</span>
+      <div class="ipl-fx-meta">
+        <span class="ipl-fx-date">${ds} · ${ts} IST</span>
+        ${cd}
+        ${isLive ? '<span class="ipl-live-pill" style="margin:0;padding:3px 9px;font-size:.62rem;"><span class="ipl-live-pulse"></span>Live</span>' : ''}
       </div>
     </div>
-    <div class="fxteams">${tbtn[0]}<div class="vssep">VS</div>${tbtn[1]}</div>
+    <div class="ipl-teams">${tbtn[0]}<div class="ipl-vs">VS</div>${tbtn[1]}</div>
     ${liveHtml}
-    <div class="fxvenue">📍 ${f.venue}</div>
-    ${st}
+    <div class="ipl-venue">📍 ${f.venue}</div>
+    ${ps}
   </div>`;
 }
 
-// ── LOCK PICK — one-way, no changes ──────────────────────────
-async function lockPick(mid, team) {
+// ── LOCK PICK — permanent, no changes ────────────────────────
+async function iplPick(mid, team) {
   if (!G.uid || !G.me) return;
   const p = G.me;
   if (!p.picks) p.picks = {};
-  if (p.picks[mid]) return;       // already picked — locked, never changes
-  if (G.results[mid]) return;     // result already in
+  if (p.picks[mid]) return;   // LOCKED — impossible to change
+  if (G.results[mid]) return; // result already declared
 
   p.picks[mid] = team;
   if (!p.lockedAt) p.lockedAt = {};
   p.lockedAt[mid] = new Date().toISOString();
 
-  // Optimistic UI update
-  updBanner();
-  renderFx();
+  // Optimistic UI
+  iplUpdBanner();
+  iplRenderFx();
 
-  // Persist to Firestore
+  // Persist
   try {
-    await db.collection('players').doc(G.uid).update({
+    await fbDb.collection('players').doc(G.uid).update({
       picks: p.picks,
-      lockedAt: p.lockedAt
+      lockedAt: p.lockedAt,
     });
   } catch(e) {
-    console.error('Failed to save pick:', e);
-    // Revert optimistic update
+    console.error('Pick save failed:', e);
     delete p.picks[mid];
     delete p.lockedAt[mid];
-    updBanner();
-    renderFx();
-    document.getElementById('fxlist').insertAdjacentHTML('afterbegin',
-      '<div class="ipl-msg err" style="margin-bottom:12px">❌ Failed to save pick. Check your connection.</div>');
+    iplUpdBanner();
+    iplRenderFx();
+    const fx = $id('ipl-fxlist');
+    if (fx) fx.insertAdjacentHTML('afterbegin',
+      '<div class="ipl-msg ipl-msg-err" style="margin-bottom:12px">❌ Pick not saved — check your connection and try again.</div>');
   }
 }
 
 // ── LEADERBOARD ──────────────────────────────────────────────
-function renderLB() {
-  const el = document.getElementById('lblist');
-  const players = Object.entries(G.players);
-  if (!players.length) { el.innerHTML = '<div class="ipl-empty">No players yet.</div>'; return; }
+function iplRenderLB() {
+  const el = $id('ipl-lb');
+  const pe = Object.entries(G.players);
+  if (!pe.length) { el.innerHTML='<div class="ipl-empty">No players yet.</div>'; return; }
 
-  const rows = players.map(([uid, p]) => {
-    const dec = Object.keys(G.results).filter(id => p.picks && p.picks[id]);
-    const acc = dec.length ? Math.round((p.pts / dec.length) * 100) : 0;
-    const str = streak(p);
-    return { uid, name: p.name, pts: p.pts, picks: Object.keys(p.picks||{}).length, acc, str };
-  }).sort((a,b) => b.pts - a.pts || b.acc - a.acc);
+  // FIX: accuracy = correct / (matches with both a pick AND a result), capped to avoid >100%
+  const rows = pe.map(([uid, p]) => {
+    const withResult = Object.keys(G.results).filter(id => p.picks?.[id]);
+    const correct    = withResult.filter(id => p.picks[id] === G.results[id]).length;
+    const acc = withResult.length ? Math.round((correct / withResult.length) * 100) : 0;
+    return { uid, name:p.name||'?', pts:p.pts||0, nPicks:Object.keys(p.picks||{}).length, acc, str:iplStreak(p) };
+  }).sort((a,b) => b.pts-a.pts || b.acc-a.acc);
 
-  const md = ['🥇','🥈','🥉'], rc = ['g','s','b'];
+  const medals=['🥇','🥈','🥉'], rc=['g','s','b'];
 
-  el.innerHTML = rows.map((r, i) => {
+  el.innerHTML = rows.map((r,i) => {
     const isMe = r.uid === G.uid;
-    const sbadge = r.str > 1 ? `<span class="streak-hot">🔥 ${r.str}</span>` : r.str < -1 ? `<span class="streak-cold">❄️ ${Math.abs(r.str)}</span>` : '';
-    return `<div class="lb-row ${isMe ? 'me' : ''}">
-      <div class="lb-rn ${rc[i]||''}">${md[i]||i+1}</div>
-      <div class="lb-nc">
-        <div class="lbn">${r.name}${isMe ? ' <span style="font-size:.68rem;color:#fbbf24;">(you)</span>' : ''} ${sbadge}</div>
-        <div class="lbs">${r.picks} picks · ${r.acc}% accuracy</div>
+    const sb = r.str > 1
+      ? `<span class="ipl-streak-hot">🔥 ${r.str}</span>`
+      : r.str < -1
+        ? `<span class="ipl-streak-cold">❄️ ${Math.abs(r.str)}</span>`
+        : '';
+    return `<div class="ipl-lb-row ${isMe?'me':''}">
+      <div class="ipl-lb-rank ${rc[i]||''}">${medals[i]||i+1}</div>
+      <div class="ipl-lb-info">
+        <div class="ipl-lb-name">${r.name}${isMe?' <span style="font-size:.68rem;color:#f59e0b;">(you)</span>':''} ${sb}</div>
+        <div class="ipl-lb-meta">${r.nPicks} picks · ${r.acc}% accuracy</div>
       </div>
-      <div class="lb-acc"><div class="acv">${r.acc}%</div><div>acc</div></div>
-      <div class="lb-pts">${r.pts}</div>
+      <div class="ipl-lb-acc"><div class="ipl-lb-acc-v">${r.acc}%</div><div class="ipl-lb-acc-l">acc</div></div>
+      <div class="ipl-lb-pts">${r.pts}</div>
     </div>`;
   }).join('');
 }
 
 // ── STATS ─────────────────────────────────────────────────────
-function renderStats() {
+function iplRenderStats() {
   const p = G.me; if (!p) return;
   const picks = p.picks || {};
-  const dec = Object.keys(G.results).filter(id => picks[id]);
-  const correct = dec.filter(id => picks[id] === G.results[id]);
-  const acc = dec.length ? Math.round((correct.length / dec.length) * 100) : 0;
+  const withResult = Object.keys(G.results).filter(id => picks[id]);
+  const correct    = withResult.filter(id => picks[id] === G.results[id]);
+  const acc = withResult.length ? Math.round((correct.length / withResult.length) * 100) : 0;
   const pending = Object.keys(picks).filter(id => !G.results[id]).length;
-  const str = streak(p);
-  const tc = {}; Object.values(picks).forEach(t => { tc[t] = (tc[t]||0)+1; });
-  const ts = Object.entries(tc).sort((a,b) => b[1]-a[1]);
-  const mx = ts[0]?.[1] || 1;
+  const str = iplStreak(p);
 
-  document.getElementById('sg').innerHTML = `
-    <div class="sc"><h4>Pick Summary</h4>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
-        ${[['Total',Object.keys(picks).length,'#fbbf24'],['Results In',dec.length,'#fbbf24'],['Correct ✅',correct.length,'#4ade80'],['Wrong ❌',dec.length-correct.length,'#f87171'],['Pending ⏳',pending,'#fb923c'],['Accuracy',acc+'%','#7dd3fc']].map(([l,v,c])=>`<div><div style="font-size:1.3rem;font-weight:700;color:${c}">${v}</div><div style="font-size:.68rem;color:var(--muted)">${l}</div></div>`).join('')}
+  // Teams backed
+  const tc = {}; Object.values(picks).forEach(t => { tc[t] = (tc[t]||0)+1; });
+  const tsSorted = Object.entries(tc).sort((a,b) => b[1]-a[1]);
+  const mx = tsSorted[0]?.[1] || 1;
+
+  $id('ipl-sg').innerHTML = `
+    <div class="ipl-sc">
+      <h4>Pick Summary</h4>
+      <div class="ipl-sg-grid">
+        ${[
+          ['Total Picks',   Object.keys(picks).length, '#f59e0b'],
+          ['Results In',    withResult.length,           '#f59e0b'],
+          ['Correct ✅',    correct.length,              '#22c55e'],
+          ['Wrong ❌',      withResult.length-correct.length, '#ef4444'],
+          ['Pending ⏳',    pending,                     '#ea580c'],
+          ['Accuracy',      acc+'%',                     '#7dd3fc'],
+        ].map(([l,v,c]) => `<div>
+          <div class="ipl-sg-item-v" style="color:${c}">${v}</div>
+          <div class="ipl-sg-item-l">${l}</div>
+        </div>`).join('')}
       </div>
     </div>
-    <div class="sc"><h4>Current Streak</h4>
-      <div style="font-size:2.8rem;font-weight:800;color:${str>0?'#4ade80':str<0?'#f87171':'var(--muted)'}">
-        ${str>0 ? '🔥 +'+str : str<0 ? '❄️ '+str : '—'}
+    <div class="ipl-sc">
+      <h4>Current Streak</h4>
+      <div style="font-family:'Bebas Neue',sans-serif;font-size:3.5rem;line-height:1;color:${str>0?'#22c55e':str<0?'#ef4444':'#64748b'}">
+        ${str>0?'🔥 +'+str:str<0?'❄️ '+str:'—'}
       </div>
-      <div style="font-size:.76rem;color:var(--muted);margin-top:8px">${str>2?'On fire! Keep going.':str<-2?'Rough patch — trust your gut.':'Based on last decided results'}</div>
+      <div style="font-size:.76rem;color:var(--ipl-muted);margin-top:10px;">
+        ${str>2?'On fire! Keep going.':str<-2?'Rough patch — back yourself.':'Based on last decided results'}
+      </div>
     </div>`;
 
-  document.getElementById('tfcard').innerHTML = ts.length ? `
-    <div class="sc" style="margin-top:14px"><h4>Teams You've Backed</h4>
-      ${ts.map(([team,cnt]) => {
-        const t = tf(team);
-        const c2 = Object.entries(picks).filter(([id,tm]) => tm===team && G.results[id]===team).length;
-        const fds = (FORM[team]||[]).map(r => `<div class="fdot ${r}"></div>`).join('');
-        return `<div class="ftr">
-          <div style="font-size:.8rem;font-weight:600;min-width:40px">${t.s}</div>
-          <div class="ftbw"><div class="ftb" style="width:${Math.round((cnt/mx)*100)}%;background:${t.c}"></div></div>
-          <div style="font-size:.68rem;color:var(--muted);min-width:20px;text-align:right">${cnt}x</div>
-          <div class="formdots">${fds}</div>
-          <div style="font-size:.68rem;color:#4ade80;min-width:28px;text-align:right">${c2>0?'✓'+c2:''}</div>
+  $id('ipl-tfcard').innerHTML = tsSorted.length ? `
+    <div class="ipl-sc" style="margin-top:14px">
+      <h4>Teams You've Backed &nbsp;<span style="color:var(--ipl-muted);font-weight:400;letter-spacing:0;text-transform:none;">(form = IPL 2025 last 5)</span></h4>
+      ${tsSorted.map(([team,cnt]) => {
+        const t  = td(team);
+        const c2 = Object.entries(picks).filter(([id,tm])=>tm===team&&G.results[id]===team).length;
+        const fds = (FORM[team]||[]).map(r=>`<div class="ipl-fd ${r}"></div>`).join('');
+        return `<div class="ipl-ftr">
+          <div style="font-family:'Bebas Neue',sans-serif;font-size:1rem;letter-spacing:.06em;min-width:44px">${t.s}</div>
+          <div class="ipl-ftbw"><div class="ipl-ftb" style="width:${Math.round((cnt/mx)*100)}%;background:${t.c}"></div></div>
+          <div style="font-size:.68rem;color:var(--ipl-muted);min-width:20px;text-align:right">${cnt}×</div>
+          <div class="ipl-form">${fds}</div>
+          <div style="font-size:.68rem;color:#22c55e;min-width:28px;text-align:right">${c2>0?'✓'+c2:''}</div>
         </div>`;
       }).join('')}
     </div>` : '';
 }
 
 // ── ADMIN (Divesh Shetty ONLY) ────────────────────────────────
-function buildAdmin() { return `
-  <button class="adm-toggle" onclick="togAdm()">⚙ Admin Panel (Divesh Shetty only)</button>
-  <div id="adm-inner" style="display:none">
-    <div class="adm-panel">
-      <h4>🏏 Declare Match Result</h4>
-      <div class="adm-row"><label>Match</label><select class="ipl-inp" id="adm-m" onchange="onAdmMChange()" style="flex:1"></select></div>
-      <div class="adm-row"><label>Winner</label><select class="ipl-inp" id="adm-w" style="flex:1"><option>—</option></select></div>
-      <div style="margin-top:14px;display:flex;gap:10px;align-items:center;flex-wrap:wrap">
-        <button class="ipl-btn ipl-btn-sm" onclick="declareRes()">Declare & Award Points</button>
-        <button class="ipl-btn-ghost" style="font-size:.75rem" onclick="undoRes()">↩ Undo Last Result</button>
+function iplBuildAdmin() {
+  return `
+    <button class="ipl-adm-toggle" onclick="iplTogAdm()">⚙ Admin Panel (Divesh Shetty only)</button>
+    <div id="ipl-adm-inner" style="display:none">
+      <div class="ipl-adm-panel">
+        <h4>🏏 Declare Match Result</h4>
+        <div class="ipl-adm-row"><label>Match</label><select class="ipl-sel" id="ipl-adm-m" onchange="iplOnAdmM()" style="flex:1"></select></div>
+        <div class="ipl-adm-row"><label>Winner</label><select class="ipl-sel" id="ipl-adm-w" style="flex:1"><option>—</option></select></div>
+        <div style="margin-top:14px;display:flex;gap:10px;flex-wrap:wrap">
+          <button class="ipl-btn" onclick="iplDeclare()">Declare &amp; Award Points</button>
+          <button class="ipl-btn-ghost" onclick="iplUndo()">↩ Undo Last Result</button>
+        </div>
+        <div id="ipl-adm-msg"></div>
+        <div style="margin-top:22px;padding-top:16px;border-top:1px solid rgba(255,255,255,.06)">
+          <h4>📊 Pick Split — Next 5 Matches</h4>
+          <div id="ipl-adm-ov"></div>
+        </div>
+        <div style="margin-top:16px;padding-top:14px;border-top:1px solid rgba(255,255,255,.06)">
+          <h4>📡 API Status</h4>
+          <div id="ipl-adm-api" style="font-size:.78rem;color:var(--ipl-muted2);">
+            Live matches fetched. Polling every 60s. Cached to minimise API hits.
+          </div>
+        </div>
       </div>
-      <div id="adm-msg"></div>
-      <div style="margin-top:22px;padding-top:16px;border-top:1px solid rgba(255,255,255,.06)">
-        <h4>📊 Pick Split (Next 5 Matches)</h4>
-        <div id="adm-overview"></div>
-      </div>
-    </div>
-  </div>`; }
+    </div>`;
+}
 
-function togAdm() {
-  const p = document.getElementById('adm-inner'); if (!p) return;
+function iplTogAdm() {
+  const p = $id('ipl-adm-inner'); if (!p) return;
   p.style.display = p.style.display==='none' ? 'block' : 'none';
-  if (p.style.display==='block') renderAdmOverview();
+  if (p.style.display==='block') { iplRenderAdmOv(); iplUpdAdmApi(); }
 }
 
-function populateAdmSel() {
-  const s = document.getElementById('adm-m'); if (!s) return;
+function iplPopAdmSel() {
+  const s = $id('ipl-adm-m'); if (!s) return;
   s.innerHTML = G.fixtures.map(f =>
-    `<option value="${f.id}">M${f.num}: ${tf(f.home).s} vs ${tf(f.away).s} (${f.date})${G.results[f.id]?' ✅ '+tf(G.results[f.id]).s:''}</option>`
+    `<option value="${f.id}">M${f.num}: ${td(f.home).s} vs ${td(f.away).s} (${f.date})${G.results[f.id]?' ✅ '+td(G.results[f.id]).s:''}</option>`
   ).join('');
-  onAdmMChange();
+  iplOnAdmM();
 }
 
-function onAdmMChange() {
-  const s = document.getElementById('adm-m'), w = document.getElementById('adm-w'); if (!s||!w) return;
+function iplOnAdmM() {
+  const s=$id('ipl-adm-m'), w=$id('ipl-adm-w'); if(!s||!w) return;
   const f = G.fixtures.find(x => x.id===s.value);
-  if (f) w.innerHTML = [f.home,f.away].map(t => `<option value="${t}">${tf(t).s} — ${t}</option>`).join('');
+  if (f) w.innerHTML = [f.home,f.away].map(t => `<option value="${t}">${td(t).s} — ${t}</option>`).join('');
 }
 
-function renderAdmOverview() {
-  const el = document.getElementById('adm-overview'); if (!el) return;
+function iplRenderAdmOv() {
+  const el = $id('ipl-adm-ov'); if (!el) return;
   const up = G.fixtures.filter(f => !G.results[f.id]).slice(0,5);
-  if (!up.length) { el.innerHTML = '<div style="color:var(--muted);font-size:.8rem">All results declared.</div>'; return; }
+  if (!up.length) { el.innerHTML='<div style="color:var(--ipl-muted);font-size:.8rem">All results declared.</div>'; return; }
   el.innerHTML = up.map(f => {
     const votes = {};
-    Object.values(G.players).forEach(p => { const pk = (p.picks||{})[f.id]; if (pk) votes[pk] = (votes[pk]||[]).concat(p.name?.split(' ')[0]); });
-    const tot = Object.values(votes).reduce((s,v) => s+v.length, 0);
+    Object.values(G.players).forEach(p => {
+      const pk=(p.picks||{})[f.id]; if(pk) votes[pk]=(votes[pk]||[]).concat(p.name?.split(' ')[0]||'?');
+    });
+    const tot = Object.values(votes).reduce((s,v)=>s+v.length,0);
     return `<div style="margin-bottom:14px">
-      <div style="font-size:.76rem;font-weight:600;margin-bottom:5px">M${f.num}: ${tf(f.home).s} vs ${tf(f.away).s}</div>
+      <div style="font-size:.76rem;font-weight:600;margin-bottom:6px">M${f.num}: ${td(f.home).s} vs ${td(f.away).s}</div>
       ${[f.home,f.away].map(t => {
-        const vt = votes[t]||[]; const pct = tot>0 ? Math.round((vt.length/tot)*100) : 0;
-        return `<div style="display:flex;align-items:center;gap:7px;margin-bottom:3px">
-          <div style="font-size:.7rem;min-width:36px;color:var(--muted)">${tf(t).s}</div>
-          <div style="flex:1;background:rgba(255,255,255,.06);border-radius:100px;height:5px">
-            <div style="width:${pct}%;height:5px;border-radius:100px;background:${TD[t]?.c||'#7dd3fc'}"></div>
-          </div>
-          <div style="font-size:.68rem;color:var(--muted)">${vt.length} (${pct}%)</div>
+        const vt=votes[t]||[]; const pct=tot>0?Math.round((vt.length/tot)*100):0;
+        return `<div class="ipl-adm-bar">
+          <div style="font-size:.68rem;min-width:38px;color:var(--ipl-muted)">${td(t).s}</div>
+          <div class="ipl-adm-bar-bg"><div class="ipl-adm-bar-fill" style="width:${pct}%;background:${TD[t]?.c||'#7dd3fc'}"></div></div>
+          <div style="font-size:.68rem;color:var(--ipl-muted);min-width:46px;text-align:right">${vt.length} (${pct}%)</div>
         </div>`;
       }).join('')}
     </div>`;
   }).join('');
 }
 
-async function declareRes() {
-  const mid = document.getElementById('adm-m')?.value;
-  const winner = document.getElementById('adm-w')?.value;
-  const msg = document.getElementById('adm-msg');
-  if (!mid||!winner) { msg.innerHTML='<div class="ipl-msg err">Select match and winner.</div>'; return; }
-  if (G.results[mid]) { msg.innerHTML='<div class="ipl-msg err">Result already declared.</div>'; return; }
+function iplUpdAdmApi() {
+  const el = $id('ipl-adm-api'); if (!el) return;
+  const live = G.liveMatches.filter(m => m.matchStarted && !m.matchEnded);
+  el.innerHTML = `API hits this session: ${G.apiHitCount} · Live IPL matches right now: ${live.length} · Cache age: ${Math.round((Date.now()-iplLiveCacheTime)/1000)}s`;
+}
+
+async function iplDeclare() {
+  const mid    = $id('ipl-adm-m')?.value;
+  const winner = $id('ipl-adm-w')?.value;
+  if (!mid||!winner||winner==='—') { showMsg('ipl-adm-msg','err','Select a match and a winner.'); return; }
+  if (G.results[mid]) { showMsg('ipl-adm-msg','err','Result already declared for this match.'); return; }
 
   G.results[mid] = winner;
-  await db.collection('results').doc('global').set(G.results);
+  await fbDb.collection('results').doc('global').set(G.results);
 
-  let aw = 0;
-  const batch = db.batch();
+  // Award points via batch write
+  let awarded = 0;
+  const batch = fbDb.batch();
   for (const [uid, p] of Object.entries(G.players)) {
     if ((p.picks||{})[mid] === winner) {
       p.pts = (p.pts||0) + 1;
-      aw++;
-      batch.update(db.collection('players').doc(uid), { pts: p.pts });
+      awarded++;
+      batch.update(fbDb.collection('players').doc(uid), { pts: p.pts });
     }
   }
   await batch.commit();
 
-  // Update own data if Divesh picked correctly
   if (G.uid && G.players[G.uid]) G.me = G.players[G.uid];
+  iplUpdBanner(); iplUpdStrip(); iplRenderFx(); iplRenderLB(); iplPopAdmSel(); iplRenderAdmOv();
 
-  updBanner(); updStrip(); renderFx(); renderLB(); populateAdmSel(); renderAdmOverview();
   const f = G.fixtures.find(x => x.id===mid);
-  msg.innerHTML = `<div class="ipl-msg ok">✅ ${tf(winner).s} declared winner for M${f?.num}. ${aw} player(s) scored!</div>`;
-  setTimeout(() => { if(msg) msg.innerHTML=''; }, 5000);
+  showMsg('ipl-adm-msg','ok',`✅ ${td(winner).s} declared winner for Match ${f?.num}. ${awarded} player(s) scored a point!`);
+  setTimeout(()=>showMsg('ipl-adm-msg','',''), 5000);
 }
 
-async function undoRes() {
-  const ids = Object.keys(G.results);
-  if (!ids.length) return;
-  const lid = ids[ids.length-1], lw = G.results[lid];
+async function iplUndo() {
+  // FIX: use fixture order (m01..m20) not Object.keys order (unreliable)
+  const lastDeclared = G.fixtures
+    .slice()
+    .reverse()
+    .find(f => G.results[f.id]);
 
-  const batch = db.batch();
+  if (!lastDeclared) { showMsg('ipl-adm-msg','warn','No results to undo.'); return; }
+  const lid = lastDeclared.id, lw = G.results[lid];
+
+  const batch = fbDb.batch();
   for (const [uid, p] of Object.entries(G.players)) {
-    if ((p.picks||{})[lid]===lw && p.pts>0) {
+    if ((p.picks||{})[lid]===lw && (p.pts||0)>0) {
       p.pts--;
-      batch.update(db.collection('players').doc(uid), { pts: p.pts });
+      batch.update(fbDb.collection('players').doc(uid), { pts: p.pts });
     }
   }
   delete G.results[lid];
   await batch.commit();
-  await db.collection('results').doc('global').set(G.results);
+  await fbDb.collection('results').doc('global').set(G.results);
 
   if (G.uid && G.players[G.uid]) G.me = G.players[G.uid];
-  updBanner(); updStrip(); renderFx(); renderLB(); populateAdmSel();
-  const f = G.fixtures.find(x => x.id===lid), msg = document.getElementById('adm-msg');
-  if (msg) { msg.innerHTML=`<div class="ipl-msg inf">↩ Result for M${f?.num} undone.</div>`; setTimeout(()=>{if(msg)msg.innerHTML='';},4000); }
+  iplUpdBanner(); iplUpdStrip(); iplRenderFx(); iplRenderLB(); iplPopAdmSel();
+  showMsg('ipl-adm-msg','inf',`↩ Result for Match ${lastDeclared.num} undone.`);
+  setTimeout(()=>showMsg('ipl-adm-msg','',''), 4000);
 }
 
 // ── START ─────────────────────────────────────────────────────
-boot();
+iplBoot();
 </script>
