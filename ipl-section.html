@@ -11,7 +11,7 @@ service cloud.firestore {
   allow read: if true;
   allow create: if request.auth != null && request.auth.uid == uid;
   allow update: if request.auth != null && request.auth.uid == uid;
-  allow delete: if request.auth.token.email == "diveshdvd28@gmail.com";
+  allow delete: if request.auth != null && request.auth.uid == "2qJ2Htig9FZ7xwbhiUMJVCTORXH2";
 }
     match /results/global {
       allow read: if true;
@@ -921,34 +921,43 @@ const plcHtml = `
 // ── LOCK PICK — permanent, no changes ────────────────────────
 async function iplPick(mid, team) {
   if (!G.uid || !G.me) return;
+
   const p = G.me;
   if (!p.picks) p.picks = {};
-  if (p.picks[mid]) return;   // LOCKED — impossible to change
-  if (G.results[mid]) return; // result already declared
 
+  // Already locked or result declared
+  if (p.picks[mid]) return;
+  if (G.results[mid]) return;
+
+  // 🔥 CONFIRMATION POPUP
+  const confirmPick = confirm(`Lock your pick: ${team}?\n\nYou cannot change it later.`);
+
+  if (!confirmPick) return; // user clicked NO
+
+  // Lock pick
   p.picks[mid] = team;
   if (!p.lockedAt) p.lockedAt = {};
   p.lockedAt[mid] = new Date().toISOString();
 
-  // Optimistic UI
+  // UI update
   iplUpdBanner();
   iplRenderFx();
 
-  // Persist
   try {
     await fbDb.collection('players').doc(G.uid).update({
       picks: p.picks,
       lockedAt: p.lockedAt,
     });
-  } catch(e) {
+  } catch (e) {
     console.error('Pick save failed:', e);
+
     delete p.picks[mid];
     delete p.lockedAt[mid];
+
     iplUpdBanner();
     iplRenderFx();
-    const fx = $id('ipl-fxlist');
-    if (fx) fx.insertAdjacentHTML('afterbegin',
-      '<div class="ipl-msg ipl-msg-err" style="margin-bottom:12px">❌ Pick not saved — check your connection and try again.</div>');
+
+    alert("❌ Pick failed. Try again.");
   }
 }
 
@@ -1061,15 +1070,30 @@ function iplRenderPlayers() {
 }
 
 async function iplRemovePlayer(uid) {
-  if (!confirm("Remove this player?")) return;
+  // Extra safety check (frontend)
+  if (G.me?.email !== ADMIN_EMAIL) {
+    alert("❌ Not authorized");
+    return;
+  }
 
-  await fbDb.collection('players').doc(uid).delete();
+  const confirmDelete = confirm("⚠️ Remove this player permanently?\n\nThis cannot be undone.");
 
-  delete G.players[uid];
+  if (!confirmDelete) return;
 
-  iplUpdStrip();
-  iplRenderLB();
-  iplRenderPlayers();
+  try {
+    await fbDb.collection('players').doc(uid).delete();
+
+    delete G.players[uid];
+
+    iplUpdStrip();
+    iplRenderLB();
+    iplRenderPlayers();
+
+    alert("✅ Player removed");
+  } catch (e) {
+    console.error(e);
+    alert("❌ Delete failed: " + e.message);
+  }
 }
 
 function iplBuildAdmin() {
