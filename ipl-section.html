@@ -866,11 +866,17 @@ function iplFxCard(f, p, now) {
     const dis = (locked || over) ? 'disabled' : '';
 
     // Logo: try API-sourced img first, fallback to colored placeholder
-    const logoHtml = t.l
-      ? `<img class="ipl-tlogo" src="${t.l}" alt="${t.s}" onerror="this.style.display='none';this.nextElementSibling.style.display='grid'">`
-      : '';
-    const plcHtml = `<div class="ipl-tplc" style="background:${t.c};display:${t.l?'none':'grid'}">${t.s}</div>`;
+    const logoHtml = `
+  <img class="ipl-tlogo" src="${t.l}" 
+       alt="${t.s}"
+       onerror="this.style.display='none'; this.parentElement.querySelector('.ipl-tplc').style.display='grid';">
+`;
 
+const plcHtml = `
+  <div class="ipl-tplc" style="background:${t.c}; display:${t.l ? 'none' : 'grid'}">
+    ${t.s}
+  </div>
+`;
     // Form dots (IPL 2025 last 5)
     const fds = !over
       ? (FORM[team] || []).map(r => `<div class="ipl-fd ${r}" title="${r==='W'?'Win':'Loss'} (IPL 2025)"></div>`).join('')
@@ -1040,6 +1046,30 @@ function iplRenderStats() {
 }
 
 // ── ADMIN (Divesh Shetty ONLY) ────────────────────────────────
+function iplRenderPlayers() {
+  const el = document.getElementById('ipl-adm-players');
+  if (!el) return;
+
+  el.innerHTML = Object.entries(G.players).map(([uid,p]) => `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+      <span>${p.name} (${p.pts||0} pts)</span>
+      <button class="ipl-btn-ghost" onclick="iplRemovePlayer('${uid}')">Remove</button>
+    </div>
+  `).join('');
+}
+
+async function iplRemovePlayer(uid) {
+  if (!confirm("Remove this player?")) return;
+
+  await fbDb.collection('players').doc(uid).delete();
+
+  delete G.players[uid];
+
+  iplUpdStrip();
+  iplRenderLB();
+  iplRenderPlayers();
+}
+
 function iplBuildAdmin() {
   return `
     <button class="ipl-adm-toggle" onclick="iplTogAdm()">⚙ Admin Panel (Divesh Shetty only)</button>
@@ -1057,6 +1087,8 @@ function iplBuildAdmin() {
           <h4>📊 Pick Split — Next 5 Matches</h4>
           <div id="ipl-adm-ov"></div>
         </div>
+        <h4>👤 Manage Players</h4>
+<div id="ipl-adm-players"></div>
         <div style="margin-top:16px;padding-top:14px;border-top:1px solid rgba(255,255,255,.06)">
           <h4>📡 API Status</h4>
           <div id="ipl-adm-api" style="font-size:.78rem;color:var(--ipl-muted2);">
