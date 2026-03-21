@@ -1089,7 +1089,12 @@ function iplBuildAdmin() {
           <div id="ipl-adm-ov"></div>
         </div>
         <h4>👤 Manage Players</h4>
-<div id="ipl-adm-players"></div>
+
+<button class="ipl-btn-ghost" onclick="iplRenderPlayers()">
+  Load Players
+</button>
+
+<div id="ipl-adm-players" style="margin-top:12px;"></div>
         <div style="margin-top:16px;padding-top:14px;border-top:1px solid rgba(255,255,255,.06)">
           <h4>📡 API Status</h4>
           <div id="ipl-adm-api" style="font-size:.78rem;color:var(--ipl-muted2);">
