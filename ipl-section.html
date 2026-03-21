@@ -367,6 +367,25 @@ fbDb.enablePersistence({ synchronizeTabs: true }).catch(() => {});
   </div><!-- /app -->
 
 </div><!-- /wrap -->
+<!-- Confirm Modal -->
+<div id="ipl-confirm-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:9999;align-items:center;justify-content:center;">
+  <div style="background:#0f172a;border:1px solid rgba(255,255,255,.1);padding:24px;border-radius:16px;max-width:320px;text-align:center;">
+    
+    <div style="font-size:1.1rem;font-weight:600;margin-bottom:10px;">
+      🔒 Lock Your Pick?
+    </div>
+
+    <div style="font-size:.85rem;color:#94a3b8;margin-bottom:20px;">
+      Once locked, you <b>cannot change</b> your prediction.
+    </div>
+
+    <div style="display:flex;gap:10px;justify-content:center;">
+      <button class="ipl-btn-ghost" onclick="iplCloseConfirm()">Cancel</button>
+      <button class="ipl-btn" id="ipl-confirm-btn">Yes, Lock</button>
+    </div>
+
+  </div>
+</div>
 </section>
 
 <script>
@@ -884,7 +903,7 @@ const plcHtml = `
       ? (FORM[team] || []).map(r => `<div class="ipl-fd ${r}" title="${r==='W'?'Win':'Loss'} (IPL 2025)"></div>`).join('')
       : '';
 
-    return `<button class="${cls}" ${dis} onclick="iplPick('${f.id}','${team.replace(/'/g,"\\'")}')">
+    return `<button class="${cls}" ${dis} onclick="iplOpenConfirm('${f.id}','${team.replace(/'/g,"\\'")}')"">
       ${logoHtml}${plcHtml}
       <div class="ipl-tshort">${t.s}</div>
       <div class="ipl-tfull">${team}</div>
@@ -917,7 +936,56 @@ const plcHtml = `
     ${ps}
   </div>`;
 }
+let pendingPick = { mid: null, team: null };
 
+function iplOpenConfirm(mid, team) {
+  pendingPick = { mid, team };
+
+  const modal = document.getElementById("ipl-confirm-modal");
+  modal.style.display = "flex";
+
+  document.getElementById("ipl-confirm-btn").onclick = async () => {
+    modal.style.display = "none";
+    await iplConfirmPick();
+  };
+}
+
+function iplCloseConfirm() {
+  document.getElementById("ipl-confirm-modal").style.display = "none";
+  pendingPick = { mid: null, team: null };
+}
+
+async function iplConfirmPick() {
+  if (!pendingPick.mid || !pendingPick.team) return;
+
+  const mid = pendingPick.mid;
+  const team = pendingPick.team;
+
+  pendingPick = { mid: null, team: null };
+
+  // 🔒 LOCK LOGIC (same as before)
+  const p = G.me;
+
+  p.picks[mid] = team;
+  if (!p.lockedAt) p.lockedAt = {};
+  p.lockedAt[mid] = new Date().toISOString();
+
+  iplUpdBanner();
+  iplRenderFx();
+
+  try {
+    await fbDb.collection('players').doc(G.uid).update({
+      picks: p.picks,
+      lockedAt: p.lockedAt,
+    });
+  } catch (e) {
+    console.error(e);
+    delete p.picks[mid];
+    delete p.lockedAt[mid];
+    iplRenderFx();
+    alert("❌ Pick failed");
+  }
+}
 // ── LOCK PICK — permanent, no changes ────────────────────────
 async function iplPick(mid, team) {
   if (!G.uid || !G.me) return;
@@ -928,11 +996,6 @@ async function iplPick(mid, team) {
   // Already locked or result declared
   if (p.picks[mid]) return;
   if (G.results[mid]) return;
-
-  // 🔥 CONFIRMATION POPUP
-  const confirmPick = confirm(`Lock your pick: ${team}?\n\nYou cannot change it later.`);
-
-  if (!confirmPick) return; // user clicked NO
 
   // Lock pick
   p.picks[mid] = team;
