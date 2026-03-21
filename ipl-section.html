@@ -7,11 +7,12 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    match /players/{uid} {
-      allow read: if true;
-      allow create: if request.auth != null && request.auth.uid == uid;
-      allow update: if request.auth != null && request.auth.uid == uid;
-    }
+   match /players/{uid} {
+  allow read: if true;
+  allow create: if request.auth != null && request.auth.uid == uid;
+  allow update: if request.auth != null && request.auth.uid == uid;
+  allow delete: if request.auth.token.email == "diveshdvd28@gmail.com";
+}
     match /results/global {
       allow read: if true;
       allow write: if request.auth != null;
@@ -375,7 +376,7 @@ fbDb.enablePersistence({ synchronizeTabs: true }).catch(() => {});
 // ================================================================
 
 const IPL_AK = 'dedf68fd-7801-48d2-95ad-2c8af1eb9c02';
-const ADMIN_NAME = 'Divesh Shetty';
+const ADMIN_EMAIL = "diveshdvd28@gmail.com"; 
 
 // ── Team data ─────────────────────────────────────────────────
 // Logo IDs confirmed from live CricAPI teamInfo responses
@@ -718,8 +719,8 @@ function iplShowApp() {
   iplRenderStats();
   iplUpdStrip();
   const aw = $id('ipl-adm-wrap');
-  aw.innerHTML = (G.me?.name === ADMIN_NAME) ? iplBuildAdmin() : '';
-  if (G.me?.name === ADMIN_NAME) iplPopAdmSel();
+  aw.innerHTML = (G.me?.email === ADMIN_EMAIL) ? iplBuildAdmin() : '';
+  if (G.me?.email === ADMIN_EMAIL) iplPopAdmSel();
 }
 
 // ── STRIP & CHIPS ─────────────────────────────────────────────
@@ -1102,7 +1103,12 @@ function iplBuildAdmin() {
 function iplTogAdm() {
   const p = $id('ipl-adm-inner'); if (!p) return;
   p.style.display = p.style.display==='none' ? 'block' : 'none';
-  if (p.style.display==='block') { iplRenderAdmOv(); iplUpdAdmApi(); }
+
+  if (p.style.display==='block') {
+    iplRenderAdmOv();
+    iplUpdAdmApi();
+    iplRenderPlayers();
+  }
 }
 
 function iplPopAdmSel() {
