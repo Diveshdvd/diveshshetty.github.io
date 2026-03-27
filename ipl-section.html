@@ -46,23 +46,18 @@ fbDb.enablePersistence({ synchronizeTabs: true }).catch(() => {});
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600;700&display=swap');
 
-/* ================= FORCE DARK MODE ================= */
+
 html, body {
   background: #050816 !important;
   color: #ffffff !important;
 }
-
-/* REMOVE ANY FADED EFFECT */
-* {
-  opacity: 1 !important;
-}
-
 /* ================= ROOT ================= */
 :root {
   --ipl-bg: #050816;
-  --ipl-surface: rgba(255,255,255,.08);
-  --ipl-border: rgba(255,255,255,.18);
-  --ipl-border-h: rgba(255,255,255,.35);
+  --ipl-surface: rgba(255,255,255,.06);
+  --ipl-surface-strong: rgba(255,255,255,.08);
+  --ipl-border: rgba(255,255,255,.14);
+  --ipl-border-h: rgba(255,255,255,.3);
 
   --ipl-gold: #facc15;
   --ipl-orange: #f97316;
@@ -71,37 +66,44 @@ html, body {
   --ipl-blue: #38bdf8;
 
   --ipl-text: #ffffff;
+  --ipl-muted: #cbd5f5;
+  --ipl-muted2: #e2e8f0;
+
+  --ipl-r: 18px;
+  --ipl-rs: 12px;
 }
 
-/* ================= MAIN WRAPPER ================= */
-#ipl-predictor {
-  background: radial-gradient(circle at top, #0b1026, #050816 60%) !important;
-  min-height: 100vh;
-  padding-bottom: 50px;
+/* ================= GLOBAL ================= */
+body {
+  background: radial-gradient(circle at top, #0b1026, #050816 60%);
 }
 
 .ipl-wrap {
-  color: #ffffff !important;
+  max-width: 900px;
+  margin-inline: auto;
+  padding: 0 20px 120px;
   font-family: 'DM Sans', sans-serif;
+  color: var(--ipl-text);
+}
+
+.ipl-rule {
+  height: 1px;
+  background: linear-gradient(90deg,transparent,#facc15,transparent);
+  margin: 80px 0;
 }
 
 /* ================= HERO ================= */
 .ipl-hero-title {
   font-family:'Bebas Neue',sans-serif;
   font-size:clamp(3rem,8vw,5.5rem);
+  letter-spacing:.05em;
   background:linear-gradient(135deg,#facc15,#f97316);
   -webkit-background-clip:text;
   -webkit-text-fill-color:transparent;
 }
 
-/* ================= FORCE TEXT VISIBILITY ================= */
-.ipl-wrap *,
-.ipl-card *,
-.ipl-fx *,
-.ipl-lb-row *,
-.ipl-player-row *,
-.ipl-adm-panel * {
-  color: #ffffff !important;
+.ipl-hero-desc {
+  color:#dbeafe;
 }
 
 /* ================= CARDS ================= */
@@ -112,87 +114,146 @@ html, body {
 .ipl-ms-tile,
 .ipl-overall,
 .ipl-match-money {
-  background: rgba(255,255,255,.08) !important;
-  border: 1px solid rgba(255,255,255,.18) !important;
+  background: var(--ipl-surface);
+  border: 1px solid var(--ipl-border);
   backdrop-filter: blur(12px);
-  border-radius: 16px;
+  border-radius: var(--ipl-r);
+  transition: all .25s ease;
 }
 
-/* ================= TEAM BUTTON ================= */
-.ipl-tbtn {
-  background: #0a0f2a !important;
-  border: 1px solid rgba(255,255,255,.2) !important;
+.ipl-card:hover,
+.ipl-fx:hover,
+.ipl-lb-row:hover {
+  transform: translateY(-4px);
+  border-color: var(--ipl-border-h);
+  box-shadow: 0 10px 30px rgba(0,0,0,.6);
 }
 
-.ipl-tbtn:hover {
-  border-color: #facc15 !important;
+/* ================= TEXT FIX ================= */
+.ipl-lb-name,
+.ipl-banner-name,
+.ipl-player-row,
+.ipl-tshort {
+  color:#fff;
+  font-weight:600;
 }
 
-/* ================= PLAYER SECTION FIX ================= */
-.ipl-player-row {
-  color: #ffffff !important;
-  font-weight: 500;
+.ipl-tfull,
+.ipl-week-table td,
+.ipl-live-sc-row,
+.ipl-mmrow-name {
+  color:#e5e7eb;
 }
 
-.ipl-player-row span,
-.ipl-player-row div {
-  color: #ffffff !important;
+/* ================= STRIP ================= */
+.ipl-tile {
+  background: linear-gradient(145deg,#0a0f2a,#050816);
+  border:1px solid var(--ipl-border);
 }
 
-.ipl-player-row strong {
-  color: #facc15 !important;
-}
-
-/* ================= PICK SPLIT FIX ================= */
-.ipl-adm-panel {
-  background: rgba(255,255,255,.05) !important;
-}
-
-.ipl-adm-panel * {
-  color: #ffffff !important;
+.ipl-tile-v {
+  font-size:2.4rem;
+  color:var(--ipl-gold);
 }
 
 /* ================= BUTTONS ================= */
 .ipl-btn {
-  background: linear-gradient(135deg,#facc15,#f97316) !important;
-  color: #000 !important;
-  font-weight: 800;
+  background: linear-gradient(135deg,#facc15,#f97316);
+  font-weight:800;
+  color:#000;
+  box-shadow:0 4px 14px rgba(250,204,21,.4);
+}
+
+.ipl-btn:hover {
+  transform: translateY(-2px) scale(1.03);
 }
 
 .ipl-btn-ghost {
-  border:1px solid #38bdf8 !important;
-  color:#38bdf8 !important;
+  border:1px solid #38bdf8;
+  color:#38bdf8;
+}
+
+.ipl-btn-ghost:hover {
+  background:#38bdf820;
+}
+
+/* ================= TEAMS ================= */
+.ipl-tbtn {
+  background: linear-gradient(145deg,#0a0f2a,#050816);
+  border:1.5px solid var(--ipl-border);
+  transition: all .2s ease;
+}
+
+.ipl-tbtn:hover {
+  border-color: var(--ipl-gold);
+  box-shadow:0 0 15px rgba(250,204,21,.3);
+}
+
+.ipl-tbtn.picked {
+  background: linear-gradient(145deg,#3b2f05,#1a1302);
+  border-color: var(--ipl-gold)!important;
+}
+
+.ipl-tbtn.correct {
+  background: rgba(34,197,94,.15)!important;
+  box-shadow:0 0 20px rgba(34,197,94,.4);
+}
+
+.ipl-tbtn.wrong {
+  background: rgba(239,68,68,.1)!important;
+}
+
+/* ================= LEADERBOARD ================= */
+.ipl-lb-row:nth-child(1) {
+  background: linear-gradient(135deg,#facc15,#f97316);
+  color:#000;
+}
+
+.ipl-lb-row:nth-child(1) .ipl-lb-name {
+  color:#000;
+}
+
+.ipl-lb-money-v {
+  color:var(--ipl-gold);
+  font-size:1.4rem;
 }
 
 /* ================= MONEY ================= */
 .ipl-ms-v,
 .ipl-overall-pl {
-  color: #facc15 !important;
+  color: var(--ipl-gold);
+  font-size:2rem;
 }
 
 /* ================= TABLE ================= */
-.ipl-week-table th,
+.ipl-week-table th {
+  color:#cbd5f5;
+}
+
 .ipl-week-table td {
-  color: #ffffff !important;
+  color:#f8fafc;
 }
 
 /* ================= LIVE ================= */
 .ipl-live-match {
-  background: rgba(34,197,94,.15) !important;
+  background: linear-gradient(135deg,#052e1f,#022c22);
+  border:1px solid rgba(34,197,94,.3);
 }
 
-/* ================= REMOVE BUTTON FIX ================= */
-.ipl-btn-red {
-  color: #ff6b6b !important;
-  border-color: #ff6b6b !important;
+/* ================= MODAL ================= */
+.ipl-modal {
+  background:#020617;
+  border:1px solid var(--ipl-gold);
 }
 
-/* ================= SCROLL ================= */
+/* ================= SCROLLBAR ================= */
 ::-webkit-scrollbar {
+  height:6px;
   width:6px;
 }
 ::-webkit-scrollbar-thumb {
   background:#facc15;
+  border-radius:10px;
 }
 
 /* ================= MOBILE ================= */
@@ -201,6 +262,12 @@ html, body {
     flex-direction:row;
     justify-content:space-between;
   }
+}
+
+#ipl-predictor {
+  background: radial-gradient(circle at top, #0b1026, #050816 60%);
+  min-height: 100vh;
+  padding-bottom: 50px;
 }
 </style>
 <section id="ipl-predictor">
