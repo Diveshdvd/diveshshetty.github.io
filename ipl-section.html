@@ -531,7 +531,16 @@ function calcMatchMoney(matchId) {
     loserUids: losers.map(([uid]) => uid)
   };
 }
+function renderAdminPanel(){
+  const aw = $('ipl-adm-wrap');
+  if (!aw) return;
 
+  aw.innerHTML = isAdmin() ? iplBuildAdmin() : '';
+  
+  if (isAdmin()) {
+    iplPopAdmSel();
+  }
+}
 function isAdmin(){
   return G.me?.email?.toLowerCase().trim() === ADMIN_EMAIL.toLowerCase().trim();
 }
@@ -710,12 +719,20 @@ async function iplSignOut(){
 function iplAttachListeners(){
   if(G.unsubP)G.unsubP();if(G.unsubR)G.unsubR();
   G.unsubP=fbDb.collection('players').onSnapshot(snap=>{
-    snap.forEach(d=>{G.players[d.id]=d.data();});
-    if(G.uid&&G.players[G.uid])G.me=G.players[G.uid];
-    iplUpdStrip();iplRenderChips();iplUpdBanner();
-    if(G.tab==='lb')iplRenderLB();if(G.tab==='st')iplRenderStats();
-    if(G.tab==='fx')iplRenderFx();if(G.tab==='money')iplRenderMoney();
-  },err=>console.warn('players:',err.code));
+  snap.forEach(d=>{G.players[d.id]=d.data();});
+  if(G.uid&&G.players[G.uid])G.me=G.players[G.uid];
+
+  iplUpdStrip();
+  iplRenderChips();
+  iplUpdBanner();
+
+  if(G.tab==='lb')iplRenderLB();
+  if(G.tab==='st')iplRenderStats();
+  if(G.tab==='fx')iplRenderFx();
+  if(G.tab==='money')iplRenderMoney();
+
+  renderAdminPanel(); // 🔥 FIX
+},err=>console.warn('players:',err.code));
   G.unsubR=fbDb.collection('results').doc('global').onSnapshot(snap=>{
     G.results=snap.exists?(snap.data()||{}):{};
     iplUpdStrip();if(G.tab==='fx')iplRenderFx();if(G.tab==='lb')iplRenderLB();
@@ -723,11 +740,22 @@ function iplAttachListeners(){
   },err=>console.warn('results:',err.code));
 }
 function iplShowApp(){
-  $('ipl-reg').style.display='none';$('ipl-app').style.display='block';
-  G.fixtures=buildFixtures();iplAttachListeners();
-  iplUpdBanner();iplRenderFx();iplRenderLB();iplRenderStats();iplUpdStrip();
-  const aw=$('ipl-adm-wrap');aw.innerHTML = isAdmin() ? iplBuildAdmin() : '';
-  if(G.me?.email===ADMIN_EMAIL)iplPopAdmSel();
+  $('ipl-reg').style.display='none';
+  $('ipl-app').style.display='block';
+
+  G.fixtures = buildFixtures();
+  iplAttachListeners();
+
+  iplUpdBanner();
+  iplRenderFx();
+  iplRenderLB();
+  iplRenderStats();
+  iplUpdStrip();
+
+  // 🔥 FIXED
+  setTimeout(() => {
+    renderAdminPanel();
+  }, 500);
 }
 function iplUpdStrip(){
   const pv=Object.values(G.players);
