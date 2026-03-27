@@ -533,7 +533,7 @@ function calcMatchMoney(matchId) {
 }
 
 function isAdmin(){
-  return G.me?.email === ADMIN_EMAIL;
+  return G.me?.email?.toLowerCase().trim() === ADMIN_EMAIL.toLowerCase().trim();
 }
 
 // Net P&L for a player across an array of matchIds
@@ -726,7 +726,7 @@ function iplShowApp(){
   $('ipl-reg').style.display='none';$('ipl-app').style.display='block';
   G.fixtures=buildFixtures();iplAttachListeners();
   iplUpdBanner();iplRenderFx();iplRenderLB();iplRenderStats();iplUpdStrip();
-  const aw=$('ipl-adm-wrap');aw.innerHTML=(G.me?.email===ADMIN_EMAIL)?iplBuildAdmin():'';
+  const aw=$('ipl-adm-wrap');aw.innerHTML = isAdmin() ? iplBuildAdmin() : '';
   if(G.me?.email===ADMIN_EMAIL)iplPopAdmSel();
 }
 function iplUpdStrip(){
