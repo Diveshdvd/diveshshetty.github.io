@@ -320,6 +320,69 @@ fbDb.enablePersistence({ synchronizeTabs: true }).catch(() => {});
   .ipl-wrap{padding:0 14px 80px;}
   .ipl-week-table th:nth-child(3),.ipl-week-table td:nth-child(3){display:none;}
 }
+
+/* ================= FINAL FIX ================= */
+
+/* Force proper dark background */
+html, body {
+  background: #050816;
+}
+
+/* Ensure main wrapper is dark */
+#ipl-predictor {
+  background: radial-gradient(circle at top, #0b1026, #050816 60%);
+}
+
+/* Fix match layout */
+.ipl-teams {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+/* Fix team buttons */
+.ipl-tbtn {
+  flex: 1;
+  text-align: center;
+}
+
+/* Fix logo size */
+.ipl-tlogo {
+  width: 44px;
+  height: 44px;
+  object-fit: contain;
+}
+
+/* Fix VS alignment */
+.ipl-vs {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  color: #94a3b8;
+}
+
+/* Fix player rows visibility */
+.ipl-player-row {
+  color: #ffffff;
+}
+
+/* Fix admin panel text */
+.ipl-adm-panel,
+.ipl-adm-panel * {
+  color: #ffffff;
+}
+
+/* Improve spacing */
+.ipl-fx {
+  padding: 20px;
+}
+
+/* Fix venue text */
+.ipl-venue {
+  color: #94a3b8;
+}
 </style>
 
 <section id="ipl-predictor">
