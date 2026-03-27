@@ -57,7 +57,7 @@ fbDb.enablePersistence({ synchronizeTabs: true }).catch(() => {});
   --ipl-blue: #7dd3fc;
   --ipl-text: #f1f5f9;
   --ipl-muted: #64748b;
- --ipl-muted2: #cbd5f5;
+  --ipl-muted2: #94a3b8;
   --ipl-r: 16px;
   --ipl-rs: 10px;
 }
@@ -120,15 +120,7 @@ fbDb.enablePersistence({ synchronizeTabs: true }).catch(() => {});
 .ipl-bstats { display:flex; gap:20px; flex-wrap:wrap; }
 .ipl-bstat-v { font-size:1.3rem; font-weight:600; line-height:1; }
 .ipl-bstat-l { font-size:.62rem; letter-spacing:.08em; text-transform:uppercase; color:var(--ipl-muted); margin-top:2px; }
-.ipl-fx {
-  transition: all 0.25s ease;
-}
-.ipl-fx:hover {
-  transform: translateY(-4px);
-}
-.ipl-tbtn:hover {
-  transform: scale(1.05);
-}
+
 /* ── Tabs ── */
 .ipl-tabs { display:flex; gap:3px; background:rgba(0,0,0,.3); border-radius:var(--ipl-rs); padding:4px; margin-bottom:28px; }
 .ipl-tab { flex:1; padding:10px 8px; text-align:center; border-radius:8px; cursor:pointer; font-size:.8rem; font-weight:500; color:var(--ipl-muted2); transition:all .2s; white-space:nowrap; }
@@ -186,18 +178,7 @@ fbDb.enablePersistence({ synchronizeTabs: true }).catch(() => {});
 /* ── Public picks ── */
 .ipl-pub-picks { margin-top:10px; display:flex; flex-wrap:wrap; gap:5px; }
 .ipl-pub-picks-lbl { font-size:.64rem; letter-spacing:.08em; text-transform:uppercase; color:var(--ipl-muted); margin-top:10px; margin-bottom:4px; }
-.ipl-pub-pick {
-  display:inline-flex;
-  align-items:center;
-  gap:5px;
-  padding:3px 9px;
-  border-radius:100px;
-  font-size:.7rem;
-  font-weight:600;
-  border:1px solid rgba(255,255,255,.1);
-  background:rgba(255,255,255,.04);
-  color: #ffffff;   /* 🔥 THIS FIXES IT */
-}
+.ipl-pub-pick { display:inline-flex; align-items:center; gap:5px; padding:3px 9px; border-radius:100px; font-size:.7rem; font-weight:500; border:1px solid rgba(255,255,255,.1); background:rgba(255,255,255,.04); }
 .ipl-pub-pick-dot { width:6px; height:6px; border-radius:50%; flex-shrink:0; }
 
 /* ── Inline live score ── */
@@ -226,11 +207,7 @@ fbDb.enablePersistence({ synchronizeTabs: true }).catch(() => {});
 .ipl-lb-rank.s { color:#cbd5e1; }
 .ipl-lb-rank.b { color:#d97706; }
 .ipl-lb-info { flex:1; }
-.ipl-lb-name {
-  font-weight: 600;
-  font-size: .92rem;
-  color: #ffffff;   /* 🔥 FIX */
-}
+.ipl-lb-name { font-weight:600; font-size:.92rem; }
 .ipl-lb-meta { font-size:.68rem; color:var(--ipl-muted); margin-top:3px; }
 .ipl-lb-money { text-align:right; min-width:60px; }
 .ipl-lb-money-v { font-family:'Bebas Neue',sans-serif; font-size:1.3rem; }
@@ -501,69 +478,39 @@ function gBtnReset(){const b=$('ipl-gbtn');if(!b)return;b.disabled=false;b.inner
 // - Winners = those who picked correctly
 // - Each winner gets pool / winners
 // - Each loser loses ₹20
-// - If you don’t pick, you lose ₹20.
+// - Players who didn't pick: no entry, no gain/loss
 function calcMatchMoney(matchId) {
   const winner = G.results[matchId];
   if (!winner) return null;
 
   const allPlayers = Object.entries(G.players);
+  // Only players who actually made a pick BEFORE the result count as "entered"
+  const entered = allPlayers.filter(([,p]) => (p.picks||{})[matchId]);
+  const winners = entered.filter(([,p]) => p.picks[matchId] === winner);
+  const losers  = entered.filter(([,p]) => p.picks[matchId] !== winner);
 
-  // 🔥 EVERYONE IS ENTERED
- const entered = allPlayers.filter(([,p]) => p.active !== false);
+  const pool    = entered.length * ENTRY_FEE;
+  const winAmt  = winners.length > 0 ? pool / winners.length : 0;
+  const profit  = winAmt - ENTRY_FEE; // net for winner (e.g. +6.67 if 3 people entered)
+  const loss    = -ENTRY_FEE;         // -₹20 for loser
 
-  const winners = entered.filter(([,p]) => p.picks?.[matchId] === winner);
-  const losers  = entered.filter(([,p]) => p.picks?.[matchId] !== winner);
-
-  const pool = entered.length * ENTRY_FEE;
-
-  const winAmt = winners.length > 0
-    ? Math.floor(pool / winners.length)
-    : 0;
-
-  return {
-    matchId,
-    winner,
-    entered: entered.length,
-    winners: winners.length,
-    pool,
-    winAmt,
-    winnerUids: winners.map(([uid]) => uid),
-    loserUids: losers.map(([uid]) => uid)
-  };
-}
-function renderAdminPanel(){
-  const aw = $('ipl-adm-wrap');
-  if (!aw) return;
-
-  aw.innerHTML = isAdmin() ? iplBuildAdmin() : '';
-  
-  if (isAdmin()) {
-    iplPopAdmSel();
-  }
-}
-function isAdmin(){
-  return G.me?.email?.toLowerCase().trim() === ADMIN_EMAIL.toLowerCase().trim();
+  return { matchId, winner, entered:entered.length, winners:winners.length, pool, winAmt, profit, loss, winnerUids:winners.map(([uid])=>uid), loserUids:losers.map(([uid])=>uid) };
 }
 
 // Net P&L for a player across an array of matchIds
 function playerPL(uid, matchIds) {
   let net = 0;
-
   for (const mid of matchIds) {
     if (!G.results[mid]) continue;
-
     const mc = calcMatchMoney(mid);
     if (!mc) continue;
-
-    if (mc.winnerUids.includes(uid)) {
-      net += mc.winAmt;        // ✅ winner gets share
-    } else {
-      net -= ENTRY_FEE;        // ❌ everyone else loses ₹20
-    }
+    if (mc.winnerUids.includes(uid))     net += mc.profit;
+    else if (mc.loserUids.includes(uid)) net += mc.loss;
+    // no pick = no money involved
   }
-
   return net;
 }
+
 // ── FIXTURES ─────────────────────────────────────────────────
 function buildFixtures(){return[
   {id:'m01',num:1, date:'2026-03-28',time:'19:30',home:'Royal Challengers Bengaluru',away:'Sunrisers Hyderabad',        venue:'M. Chinnaswamy Stadium, Bengaluru'},
@@ -588,13 +535,7 @@ function buildFixtures(){return[
   {id:'m20',num:20,date:'2026-04-12',time:'19:30',home:'Mumbai Indians',              away:'Royal Challengers Bengaluru',venue:'Wankhede Stadium, Mumbai'},
 ];}
 
-function isPickLocked(f){
-  const mDT=new Date(`${f.date}T${f.time}:00+05:30`);
-
-   const lockTime = new Date(mDT.getTime() - LOCK_MINS * 60 * 1000);
-  if (isAdmin()) return false; // 🔥 admin bypass
-return new Date() >= lockTime; // 🔥 STRICT LOCK
-}
+function isPickLocked(f){const mDT=new Date(`${f.date}T${f.time}:00+05:30`);return(mDT-new Date())<=LOCK_MINS*60*1000;}
 function pickDeadline(f){const mDT=new Date(`${f.date}T${f.time}:00+05:30`);const dl=new Date(mDT-LOCK_MINS*60*1000);return dl.toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit',hour12:true});}
 
 // ── BOOT ─────────────────────────────────────────────────────
@@ -613,17 +554,6 @@ async function iplLoadPublic(){
     if(rs.exists)G.results=rs.data()||{};
   }catch(e){}
   iplUpdStrip(); iplRenderChips();
-}
-
-async function togglePlayer(uid, currentStatus){
-  if (!isAdmin()) {
-    alert("Only admin can do this");
-    return;
-  }
-
-  await fbDb.collection("players").doc(uid).update({
-    active: !currentStatus
-  });
 }
 
 // ── CRICAPI ───────────────────────────────────────────────────
@@ -678,27 +608,8 @@ async function iplHandleUser(user){
   const ref=fbDb.collection('players').doc(user.uid);
   try{
     const snap=await ref.get({source:'server'});
-    if(!snap.exists){
-  const data={
-    name:user.displayName||user.email?.split('@')[0]||'Player',
-    email:user.email||'',
-    pts:0,
-    picks:{},
-    lockedAt:{},
-    active:true   // 🔥 ADD THIS LINE
-  };
-  await ref.set(data);
-  G.me=data;
-}
-   else{
-  G.me = snap.data();
-
-  if (G.me.pts === undefined) G.me.pts = 0;
-  if (!G.me.picks) G.me.picks = {};
-
-  // 🔥 IMPORTANT FIX
-  if (G.me.active === undefined) G.me.active = true;
-}
+    if(!snap.exists){const data={name:user.displayName||user.email?.split('@')[0]||'Player',email:user.email||'',pts:0,picks:{},lockedAt:{}};await ref.set(data);G.me=data;}
+    else{G.me=snap.data();if(G.me.pts===undefined)G.me.pts=0;if(!G.me.picks)G.me.picks={};}
     G.players[user.uid]=G.me;iplShowApp();
   }catch(err){
     if(err.code==='unavailable'||(err.message||'').includes('offline')){
@@ -719,20 +630,12 @@ async function iplSignOut(){
 function iplAttachListeners(){
   if(G.unsubP)G.unsubP();if(G.unsubR)G.unsubR();
   G.unsubP=fbDb.collection('players').onSnapshot(snap=>{
-  snap.forEach(d=>{G.players[d.id]=d.data();});
-  if(G.uid&&G.players[G.uid])G.me=G.players[G.uid];
-
-  iplUpdStrip();
-  iplRenderChips();
-  iplUpdBanner();
-
-  if(G.tab==='lb')iplRenderLB();
-  if(G.tab==='st')iplRenderStats();
-  if(G.tab==='fx')iplRenderFx();
-  if(G.tab==='money')iplRenderMoney();
-
-  renderAdminPanel(); // 🔥 FIX
-},err=>console.warn('players:',err.code));
+    snap.forEach(d=>{G.players[d.id]=d.data();});
+    if(G.uid&&G.players[G.uid])G.me=G.players[G.uid];
+    iplUpdStrip();iplRenderChips();iplUpdBanner();
+    if(G.tab==='lb')iplRenderLB();if(G.tab==='st')iplRenderStats();
+    if(G.tab==='fx')iplRenderFx();if(G.tab==='money')iplRenderMoney();
+  },err=>console.warn('players:',err.code));
   G.unsubR=fbDb.collection('results').doc('global').onSnapshot(snap=>{
     G.results=snap.exists?(snap.data()||{}):{};
     iplUpdStrip();if(G.tab==='fx')iplRenderFx();if(G.tab==='lb')iplRenderLB();
@@ -740,22 +643,11 @@ function iplAttachListeners(){
   },err=>console.warn('results:',err.code));
 }
 function iplShowApp(){
-  $('ipl-reg').style.display='none';
-  $('ipl-app').style.display='block';
-
-  G.fixtures = buildFixtures();
-  iplAttachListeners();
-
-  iplUpdBanner();
-  iplRenderFx();
-  iplRenderLB();
-  iplRenderStats();
-  iplUpdStrip();
-
-  // 🔥 FIXED
-  setTimeout(() => {
-    renderAdminPanel();
-  }, 500);
+  $('ipl-reg').style.display='none';$('ipl-app').style.display='block';
+  G.fixtures=buildFixtures();iplAttachListeners();
+  iplUpdBanner();iplRenderFx();iplRenderLB();iplRenderStats();iplUpdStrip();
+  const aw=$('ipl-adm-wrap');aw.innerHTML=(G.me?.email===ADMIN_EMAIL)?iplBuildAdmin():'';
+  if(G.me?.email===ADMIN_EMAIL)iplPopAdmSel();
 }
 function iplUpdStrip(){
   const pv=Object.values(G.players);
@@ -794,46 +686,12 @@ function iplFilt(f,el){G.filter=f;document.querySelectorAll('.ipl-fc').forEach(c
 
 // ── FIXTURES ─────────────────────────────────────────────────
 function iplRenderFx(){
-  const el = $('ipl-fxlist');
-  if (!G.me || !el) return;
-
-  const p = G.me;
-  const now = new Date();
-
-  let list = [...G.fixtures];
-
-  // 🔥 FILTERS
-  if (G.filter === 'up') list = list.filter(f => !G.results[f.id]);
-  else if (G.filter === 'pk') list = list.filter(f => p.picks?.[f.id]);
-  else if (G.filter === 'dn') list = list.filter(f => G.results[f.id]);
-
-  // 🔥 SORTING LOGIC (THIS IS THE FIX)
-  list.sort((a, b) => {
-    const aDate = new Date(`${a.date}T${a.time}:00+05:30`);
-    const bDate = new Date(`${b.date}T${b.time}:00+05:30`);
-
-    const aDone = !!G.results[a.id];
-    const bDone = !!G.results[b.id];
-
-    const aLive = aDate <= now && !aDone;
-    const bLive = bDate <= now && !bDone;
-
-    // 1️⃣ LIVE FIRST
-    if (aLive && !bLive) return -1;
-    if (!aLive && bLive) return 1;
-
-    // 2️⃣ UPCOMING NEXT
-    if (!aDone && bDone) return -1;
-    if (aDone && !bDone) return 1;
-
-    // 3️⃣ SORT BY TIME
-    return aDate - bDate;
-  });
-
-  // 🔥 RENDER
-  el.innerHTML = list.length
-    ? list.map(f => iplFxCard(f, p, now)).join('')
-    : '<div class="ipl-empty">No matches in this view.</div>';
+  const el=$('ipl-fxlist');if(!G.me||!el)return;
+  const p=G.me,now=new Date();let list=[...G.fixtures];
+  if(G.filter==='up')list=list.filter(f=>!G.results[f.id]);
+  else if(G.filter==='pk')list=list.filter(f=>p.picks?.[f.id]);
+  else if(G.filter==='dn')list=list.filter(f=>G.results[f.id]);
+  el.innerHTML=list.length?list.map(f=>iplFxCard(f,p,now)).join(''):'<div class="ipl-empty">No matches in this view.</div>';
 }
 
 function iplFxCard(f,p,now){
@@ -852,7 +710,7 @@ function iplFxCard(f,p,now){
 
   // Money pool info
   const mc=over?calcMatchMoney(f.id):null;
-  const poolPlayers = Object.keys(G.players).length;
+  const poolPlayers=Object.values(G.players).filter(pl=>(pl.picks||{})[f.id]).length;
   const poolAmt=poolPlayers*ENTRY_FEE;
   let poolBadge='';
   if(!over&&poolPlayers>0)poolBadge=`<span class="ipl-pool-badge">₹${poolAmt} pot · ${poolPlayers} entries</span>`;
@@ -1146,12 +1004,6 @@ function iplBuildAdmin(){return`
     <div style="margin-top:20px;padding-top:16px;border-top:1px solid rgba(255,255,255,.06)">
       <h4>👤 Players</h4><div id="ipl-adm-players"></div>
     </div>
-    <button onclick="togglePlayer('${uid}', ${p.active !== false})">
-  ${p.active !== false ? 'Deactivate' : 'Activate'}
-</button>
-    <input id="newPlayerName" placeholder="Player Name">
-<input id="newPlayerEmail" placeholder="Email">
-<button onclick="addPlayer()">Add Player</button>
   </div></div>`;}
 function iplTogAdm(){const p=$('ipl-adm-inner');if(!p)return;p.style.display=p.style.display==='none'?'block':'none';if(p.style.display==='block'){iplRenderAdmOv();iplRenderAdmPlayers();}}
 function iplPopAdmSel(){const s=$('ipl-adm-m');if(!s)return;s.innerHTML=G.fixtures.map(f=>`<option value="${f.id}">M${f.num}: ${td(f.home).s} vs ${td(f.away).s} (${f.date})${G.results[f.id]?' ✅ '+td(G.results[f.id]).s:''}</option>`).join('');iplOnAdmM();}
@@ -1176,23 +1028,6 @@ function iplRenderAdmPlayers(){
       <span>${p.name} · <span style="color:#f59e0b">${p.pts||0}pt</span> · <span style="color:${playerPL(uid,Object.keys(G.results))>=0?'#22c55e':'#f87171'}">${fmtPlain(playerPL(uid,Object.keys(G.results)))}</span></span>
       ${uid!==G.uid?`<button class="ipl-btn-red" onclick="iplRemovePlayer('${uid}','${(p.name||'').replace(/'/g,"\\'")}')" style="font-size:.72rem;padding:4px 10px">Remove</button>`:'<span style="font-size:.7rem;color:var(--ipl-muted)">(you)</span>'}
     </div>`).join('');
-}
-async function addPlayer(){
-  if (!isAdmin()) return;
-
-  const name = document.getElementById("newPlayerName").value;
-  const email = document.getElementById("newPlayerEmail").value;
-
-  const id = "user_" + Date.now();
-
-  await fbDb.collection("players").doc(id).set({
-    name,
-    email,
-    pts: 0,
-    picks: {}
-  });
-
-  alert("Player added!");
 }
 async function iplRemovePlayer(uid,name){
   if(!confirm(`Remove ${name}?`))return;
