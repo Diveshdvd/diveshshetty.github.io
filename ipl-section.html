@@ -803,19 +803,45 @@ function iplFxCard(f,p,now){
   const liveM=G.liveMatches.find(m=>m.matchStarted&&!m.matchEnded&&Array.isArray(m.teams)&&m.teams.some(t=>t===f.home||t===f.away));
   const liveHtml=liveM?`<div class="ipl-fx-live"><div class="ipl-fx-live-lbl"><span class="ipl-dot"></span>Live</div>${(liveM.score||[]).map(s=>`<div class="ipl-fx-live-sc"><strong>${s.inning.replace(/ Inning \d/,'').replace(/,.*/,'').trim()}</strong>: ${s.r}/${s.w} (${s.o} ov)</div>`).join('')||'<div class="ipl-fx-live-sc">In progress</div>'}<div style="color:var(--ipl-muted);font-size:.72rem;margin-top:3px;font-style:italic">${liveM.status||''}</div></div>`:'';
 
-  // Public picks (before result only)
-  let pubHtml='';
-  if(!over){
-    const byTeam={[f.home]:[],[f.away]:[]};
-    Object.values(G.players).forEach(pl=>{const pk=(pl.picks||{})[f.id];if(pk&&byTeam[pk])byTeam[pk].push(pl.name?.split(' ')[0]||'?');});
-    const total=byTeam[f.home].length+byTeam[f.away].length;
-    if(total>0){
-      pubHtml=`<div class="ipl-pub-picks-lbl">Office picks</div><div class="ipl-pub-picks">
-        ${byTeam[f.home].map(n=>`<span class="ipl-pub-pick"><span class="ipl-pub-pick-dot" style="background:${TD[f.home]?.c||'#7dd3fc'}"></span>${n}</span>`).join('')}
-        ${byTeam[f.away].map(n=>`<span class="ipl-pub-pick"><span class="ipl-pub-pick-dot" style="background:${TD[f.away]?.c||'#7dd3fc'}"></span>${n}</span>`).join('')}
-      </div>`;
-    }
+  // Public picks (SAFE VERSION — NO NAMES)
+let pubHtml = '';
+
+if(!over){
+  const byTeam = { [f.home]: 0, [f.away]: 0 };
+
+  Object.values(G.players).forEach(pl => {
+    const pk = (pl.picks||{})[f.id];
+    if(pk && byTeam[pk] !== undefined) byTeam[pk]++;
+  });
+
+  const total = byTeam[f.home] + byTeam[f.away];
+
+  if(total > 0){
+    const homePct = Math.round((byTeam[f.home] / total) * 100);
+    const awayPct = 100 - homePct;
+
+    pubHtml = `
+      <div class="ipl-pub-picks-lbl">Office picks</div>
+      <div style="font-size:12px;color:#94a3b8;margin-bottom:6px">
+        ${total} entries
+      </div>
+
+      <div style="display:flex;align-items:center;gap:8px">
+        <div style="flex:1;height:6px;background:#222;border-radius:10px;overflow:hidden">
+          <div style="width:${homePct}%;background:${TD[f.home]?.c||'#38bdf8'};height:100%"></div>
+        </div>
+        <div style="font-size:11px">${homePct}%</div>
+      </div>
+
+      <div style="display:flex;align-items:center;gap:8px;margin-top:4px">
+        <div style="flex:1;height:6px;background:#222;border-radius:10px;overflow:hidden">
+          <div style="width:${awayPct}%;background:${TD[f.away]?.c||'#38bdf8'};height:100%"></div>
+        </div>
+        <div style="font-size:11px">${awayPct}%</div>
+      </div>
+    `;
   }
+}
 
   // Team buttons
   const tbtn=[f.home,f.away].map(team=>{
