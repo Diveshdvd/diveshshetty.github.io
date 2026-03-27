@@ -186,7 +186,18 @@ fbDb.enablePersistence({ synchronizeTabs: true }).catch(() => {});
 /* ── Public picks ── */
 .ipl-pub-picks { margin-top:10px; display:flex; flex-wrap:wrap; gap:5px; }
 .ipl-pub-picks-lbl { font-size:.64rem; letter-spacing:.08em; text-transform:uppercase; color:var(--ipl-muted); margin-top:10px; margin-bottom:4px; }
-.ipl-pub-pick { display:inline-flex; align-items:center; gap:5px; padding:3px 9px; border-radius:100px; font-size:.7rem; font-weight:500; border:1px solid rgba(255,255,255,.1); background:rgba(255,255,255,.04); }
+.ipl-pub-pick {
+  display:inline-flex;
+  align-items:center;
+  gap:5px;
+  padding:3px 9px;
+  border-radius:100px;
+  font-size:.7rem;
+  font-weight:600;
+  border:1px solid rgba(255,255,255,.1);
+  background:rgba(255,255,255,.04);
+  color: #ffffff;   /* 🔥 THIS FIXES IT */
+}
 .ipl-pub-pick-dot { width:6px; height:6px; border-radius:50%; flex-shrink:0; }
 
 /* ── Inline live score ── */
@@ -570,8 +581,10 @@ function buildFixtures(){return[
 
 function isPickLocked(f){
   const mDT=new Date(`${f.date}T${f.time}:00+05:30`);
+
+   const lockTime = new Date(mDT.getTime() - LOCK_MINS * 60 * 1000);
   if (isAdmin()) return false; // 🔥 admin bypass
-return new Date() >= mDT; // 🔥 STRICT LOCK
+return new Date() >= lockTime; // 🔥 STRICT LOCK
 }
 function pickDeadline(f){const mDT=new Date(`${f.date}T${f.time}:00+05:30`);const dl=new Date(mDT-LOCK_MINS*60*1000);return dl.toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit',hour12:true});}
 
