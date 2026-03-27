@@ -57,7 +57,7 @@ fbDb.enablePersistence({ synchronizeTabs: true }).catch(() => {});
   --ipl-blue: #7dd3fc;
   --ipl-text: #f1f5f9;
   --ipl-muted: #64748b;
-  --ipl-muted2: #94a3b8;
+ --ipl-muted2: #cbd5f5;
   --ipl-r: 16px;
   --ipl-rs: 10px;
 }
@@ -215,7 +215,11 @@ fbDb.enablePersistence({ synchronizeTabs: true }).catch(() => {});
 .ipl-lb-rank.s { color:#cbd5e1; }
 .ipl-lb-rank.b { color:#d97706; }
 .ipl-lb-info { flex:1; }
-.ipl-lb-name { font-weight:600; font-size:.92rem; }
+.ipl-lb-name {
+  font-weight: 600;
+  font-size: .92rem;
+  color: #ffffff;   /* 🔥 FIX */
+}
 .ipl-lb-meta { font-size:.68rem; color:var(--ipl-muted); margin-top:3px; }
 .ipl-lb-money { text-align:right; min-width:60px; }
 .ipl-lb-money-v { font-family:'Bebas Neue',sans-serif; font-size:1.3rem; }
@@ -494,7 +498,7 @@ function calcMatchMoney(matchId) {
   const allPlayers = Object.entries(G.players);
 
   // 🔥 EVERYONE IS ENTERED
-  const entered = allPlayers;
+ const entered = allPlayers.filter(([,p]) => p.active !== false);
 
   const winners = entered.filter(([,p]) => p.picks?.[matchId] === winner);
   const losers  = entered.filter(([,p]) => p.picks?.[matchId] !== winner);
@@ -566,7 +570,8 @@ function buildFixtures(){return[
 
 function isPickLocked(f){
   const mDT=new Date(`${f.date}T${f.time}:00+05:30`);
-  return new Date() >= mDT; // 🔥 STRICT LOCK
+  if (isAdmin()) return false; // 🔥 admin bypass
+return new Date() >= mDT; // 🔥 STRICT LOCK
 }
 function pickDeadline(f){const mDT=new Date(`${f.date}T${f.time}:00+05:30`);const dl=new Date(mDT-LOCK_MINS*60*1000);return dl.toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit',hour12:true});}
 
@@ -586,6 +591,17 @@ async function iplLoadPublic(){
     if(rs.exists)G.results=rs.data()||{};
   }catch(e){}
   iplUpdStrip(); iplRenderChips();
+}
+
+async function togglePlayer(uid, currentStatus){
+  if (!isAdmin()) {
+    alert("Only admin can do this");
+    return;
+  }
+
+  await fbDb.collection("players").doc(uid).update({
+    active: !currentStatus
+  });
 }
 
 // ── CRICAPI ───────────────────────────────────────────────────
@@ -640,8 +656,27 @@ async function iplHandleUser(user){
   const ref=fbDb.collection('players').doc(user.uid);
   try{
     const snap=await ref.get({source:'server'});
-    if(!snap.exists){const data={name:user.displayName||user.email?.split('@')[0]||'Player',email:user.email||'',pts:0,picks:{},lockedAt:{}};await ref.set(data);G.me=data;}
-    else{G.me=snap.data();if(G.me.pts===undefined)G.me.pts=0;if(!G.me.picks)G.me.picks={};}
+    if(!snap.exists){
+  const data={
+    name:user.displayName||user.email?.split('@')[0]||'Player',
+    email:user.email||'',
+    pts:0,
+    picks:{},
+    lockedAt:{},
+    active:true   // 🔥 ADD THIS LINE
+  };
+  await ref.set(data);
+  G.me=data;
+}
+   else{
+  G.me = snap.data();
+
+  if (G.me.pts === undefined) G.me.pts = 0;
+  if (!G.me.picks) G.me.picks = {};
+
+  // 🔥 IMPORTANT FIX
+  if (G.me.active === undefined) G.me.active = true;
+}
     G.players[user.uid]=G.me;iplShowApp();
   }catch(err){
     if(err.code==='unavailable'||(err.message||'').includes('offline')){
@@ -866,7 +901,7 @@ function iplOpenModal(mid,team){
   $('ipl-modal-body').innerHTML=isChange
     ?`Changing from <strong>${td(myPick).s}</strong> to <strong>${td(team).s} — ${team}</strong>.<br><small style="color:var(--ipl-muted)">Pool is ~₹${poolPreview}</small>`
     :`Picking <strong>${td(team).s} — ${team}</strong>.<br><small style="color:var(--ipl-muted)">₹${ENTRY_FEE} entry · Pool is ~₹${poolPreview}</small>`;
-  $('ipl-modal-deadline').textContent=`⏰ You can change until ${pickDeadline(f)} `;
+  $('ipl-modal-deadline').textContent=`⏰ You can change until ${pickDeadline(f)} today`;
   $('ipl-modal').classList.add('show');
   $('ipl-modal-confirm').onclick=async()=>{ $('ipl-modal').classList.remove('show'); await iplSavePick(mid,team); };
 }
@@ -1070,6 +1105,9 @@ function iplBuildAdmin(){return`
     <div style="margin-top:20px;padding-top:16px;border-top:1px solid rgba(255,255,255,.06)">
       <h4>👤 Players</h4><div id="ipl-adm-players"></div>
     </div>
+    <button onclick="togglePlayer('${uid}', ${p.active !== false})">
+  ${p.active !== false ? 'Deactivate' : 'Activate'}
+</button>
     <input id="newPlayerName" placeholder="Player Name">
 <input id="newPlayerEmail" placeholder="Email">
 <button onclick="addPlayer()">Add Player</button>
