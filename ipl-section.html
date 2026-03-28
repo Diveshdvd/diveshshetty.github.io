@@ -454,7 +454,17 @@ html, body {
 
     <div id="ipl-tab-lb" style="display:none;"><div class="ipl-lb" id="ipl-lb"></div></div>
     <div id="ipl-tab-st" style="display:none;"><div class="ipl-sg" id="ipl-sg"></div><div id="ipl-tfcard"></div></div>
-    <div id="ipl-tab-money" style="display:none;"><div id="ipl-money-content"></div></div>
+    <div id="ipl-tab-money" style="display:none;">
+
+  <div style="display:flex;justify-content:flex-end;margin-bottom:12px;">
+    <button class="ipl-btn" onclick="exportToExcel()">⬇ Export Excel</button>
+  </div>
+
+  <div id="money-table"></div>
+  <div id="weekly-summary" style="margin-top:20px;"></div>
+  <div id="settlement" style="margin-top:20px;"></div>
+
+</div>
 
     <div id="ipl-adm-wrap" style="margin-top:56px;padding-top:20px;border-top:1px solid rgba(255,255,255,.06);"></div>
   </div>
@@ -974,118 +984,167 @@ function iplRenderStats(){
 }
 
 // ── MONEY TAB ─────────────────────────────────────────────────
-function iplRenderMoney(){
-  const el=$('ipl-money-content');if(!el)return;
-  const pe=Object.entries(G.players);
-  const decidedMids=Object.keys(G.results);
-  if(!decidedMids.length){el.innerHTML='<div class="ipl-empty">No results declared yet. Check back after matches!</div>';return;}
+function iplRenderMoney() {
+  const container = document.getElementById("money-table");
+  const weeklyBox = document.getElementById("weekly-summary");
+  const settleBox = document.getElementById("settlement");
 
-  // Overall P&L
-  const overall=pe.map(([uid,p])=>({uid,name:p.name||'?',pl:playerPL(uid,decidedMids),nPicks:Object.keys(p.picks||{}).length})).sort((a,b)=>b.pl-a.pl);
-  const totalPool=decidedMids.reduce((s,mid)=>{const mc=calcMatchMoney(mid);return s+(mc?mc.pool:0);},0);
-  const decidedCount=decidedMids.length;
-  const totalWins=overall.filter(r=>r.pl>0).length;
+  let html = "";
+  let weekly = {};
+  let balances = {};
 
-  // Build weekly breakdown
-  const weekBlocks=WEEKS.map(w=>{
-    const wMids=w.matches.filter(mid=>G.results[mid]);
-    if(!wMids.length)return null;
-    const wPool=wMids.reduce((s,mid)=>{const mc=calcMatchMoney(mid);return s+(mc?mc.pool:0);},0);
-    const playerRows=pe.map(([uid,p])=>({uid,name:p.name||'?',pl:playerPL(uid,wMids),nPicks:wMids.filter(mid=>(p.picks||{})[mid]).length,correct:wMids.filter(mid=>(p.picks||{})[mid]===G.results[mid]).length})).sort((a,b)=>b.pl-a.pl);
-    // Per-match detail
-    const matchDetails=wMids.map(mid=>{
-      const mc=calcMatchMoney(mid);if(!mc)return null;
-      const f=G.fixtures.find(x=>x.id===mid);
-      return{f,mc};
-    }).filter(Boolean);
-    return{week:w,wMids,wPool,playerRows,matchDetails};
-  }).filter(Boolean);
+  G.fixtures.forEach(f => {
+    const result = G.results[f.id];
+    if (!result) return;
 
-  el.innerHTML=`
-    <!-- Hero summary -->
-    <div class="ipl-money-hero">
-      <div class="ipl-money-hero-title">💰 Money Report</div>
-      <div class="ipl-money-hero-sub">₹${ENTRY_FEE} entry per match · winners split the full pot · updated after every result</div>
-      <div class="ipl-money-summary">
-        <div class="ipl-ms-tile"><div class="ipl-ms-v" style="color:#f59e0b">₹${totalPool.toFixed(0)}</div><div class="ipl-ms-l">Total Pot</div></div>
-        <div class="ipl-ms-tile"><div class="ipl-ms-v" style="color:#7dd3fc">${decidedCount}</div><div class="ipl-ms-l">Results In</div></div>
-        <div class="ipl-ms-tile"><div class="ipl-ms-v" style="color:#22c55e">${pe.length}</div><div class="ipl-ms-l">Players</div></div>
-      </div>
-    </div>
+    const players = Object.entries(G.players)
+      .filter(([,p]) => p.picks?.[f.id]);
 
-    <!-- Overall P&L leaderboard -->
-    <div class="ipl-overall" style="margin-bottom:28px;">
-      <div class="ipl-overall-hdr">Overall P&L — Season to Date</div>
-      ${overall.map((r,i)=>{
-        const isMe=r.uid===G.uid;
-        const plCls=r.pl>0?'ipl-pl-pos':r.pl<0?'ipl-pl-neg':'ipl-pl-zero';
-        const plStr=r.pl>=0?`+₹${r.pl.toFixed(1)}`:`-₹${Math.abs(r.pl).toFixed(1)}`;
-        const medals=['🥇','🥈','🥉'];
-        return`<div class="ipl-overall-row ${isMe?'me':''}">
-          <div class="ipl-overall-rank">${medals[i]||i+1}</div>
-          <div>
-            <div class="ipl-overall-name">${r.name}${isMe?' <span style="font-size:.68rem;color:#f59e0b">(you)</span>':''}</div>
-            <div class="ipl-overall-detail">${r.nPicks} matches entered · ₹${(r.nPicks*ENTRY_FEE).toFixed(0)} invested</div>
+    if (!players.length) return;
+
+    const pool = players.length * ENTRY_FEE;
+    const winners = players.filter(([,p]) => p.picks[f.id] === result);
+    const winAmt = winners.length ? pool / winners.length : 0;
+
+    html += `
+      <div class="ipl-match-money">
+        <div class="ipl-match-money-hdr">
+          <div class="ipl-match-money-name">
+            ${f.home} vs ${f.away}
           </div>
-          <div class="ipl-overall-pl ${plCls}">${plStr}</div>
-        </div>`;
-      }).join('')}
-    </div>
-
-    <!-- Weekly breakdown -->
-    ${weekBlocks.map(wb=>`
-      <div class="ipl-week-block">
-        <div class="ipl-week-hdr">
-          <div class="ipl-week-title">${wb.week.label} · ${wb.week.start} to ${wb.week.end}</div>
-          <div class="ipl-week-pool">₹${wb.wPool.toFixed(0)} total pot · ${wb.wMids.length} match${wb.wMids.length!==1?'es':''}</div>
+          <div class="ipl-match-money-pool">
+            Pool: ₹${pool}
+          </div>
         </div>
+        <div class="ipl-match-money-rows">
+    `;
 
-        <!-- Week player summary table -->
-        <div class="ipl-overall" style="margin-bottom:16px;">
-          <div class="ipl-overall-hdr" style="font-size:.9rem;">${wb.week.label} Summary</div>
-          ${wb.playerRows.map((r,i)=>{
-            const isMe=r.uid===G.uid;
-            const plCls=r.pl>0?'ipl-pl-pos':r.pl<0?'ipl-pl-neg':'ipl-pl-zero';
-            const plStr=r.pl>=0?`+₹${r.pl.toFixed(1)}`:`-₹${Math.abs(r.pl).toFixed(1)}`;
-            return`<div class="ipl-overall-row ${isMe?'me':''}">
-              <div class="ipl-overall-rank" style="font-size:1rem;">${i+1}</div>
-              <div><div class="ipl-overall-name">${r.name}${isMe?' <span style="font-size:.68rem;color:#f59e0b">(you)</span>':''}</div>
-              <div class="ipl-overall-detail">${r.correct}/${r.nPicks} correct</div></div>
-              <div class="ipl-overall-pl ${plCls}">${plStr}</div>
-            </div>`;
-          }).join('')}
-        </div>
+    players.forEach(([uid, p]) => {
+      const isWinner = winners.find(w => w[0] === uid);
+      const net = isWinner ? (winAmt - ENTRY_FEE) : -ENTRY_FEE;
 
-        <!-- Per-match breakdown -->
-        <div class="ipl-match-row">
-          ${wb.matchDetails.map(({f,mc})=>{
-            const pRows=Object.entries(G.players).map(([uid,p])=>{
-              const myPick=(p.picks||{})[f.id];
-              if(!myPick)return null;
-              const isW=mc.winnerUids.includes(uid);
-              const netStr=isW?`+₹${mc.profit.toFixed(1)}`:`-₹${ENTRY_FEE}`;
-              const netCls=isW?'win':'loss';
-              const isMe=uid===G.uid;
-              return{name:p.name?.split(' ')[0]||'?',pick:td(myPick).s,net:netStr,cls:netCls,isMe};
-            }).filter(Boolean);
-            return`<div class="ipl-match-money">
-              <div class="ipl-match-money-hdr">
-                <div class="ipl-match-money-name">M${f.num}: ${td(f.home).s} vs ${td(f.away).s}</div>
-                <div class="ipl-match-money-pool">₹${mc.pool} pot · ${mc.winners} won · ₹${mc.winAmt.toFixed(1)} each</div>
-              </div>
-              <div style="font-size:.72rem;color:var(--ipl-muted2);margin-bottom:8px;">Winner: <strong style="color:#22c55e">${td(mc.winner).s}</strong></div>
-              <div class="ipl-match-money-rows">
-                ${pRows.map(r=>`<div class="ipl-mmrow ${r.isMe?'style="background:rgba(245,158,11,.05);border-radius:6px;padding:4px 6px;"':''}">
-                  <div class="ipl-mmrow-name">${r.name} <span style="color:var(--ipl-muted);font-size:.68rem">picked ${r.pick}</span></div>
-                  <div class="ipl-mmrow-result ${r.cls}">${r.net}</div>
-                </div>`).join('')}
-              </div>
-            </div>`;
-          }).join('')}
+      html += `
+        <div class="ipl-mmrow">
+          <span class="ipl-mmrow-name">${p.name}</span>
+          <span class="ipl-mmrow-result ${net>=0?'win':'loss'}">
+            ${net>=0?'+':''}₹${net.toFixed(1)}
+          </span>
         </div>
-      </div>
-    `).join('')}
+      `;
+
+      // Weekly calc
+      if (!weekly[uid]) weekly[uid] = 0;
+      weekly[uid] += net;
+
+      // Balance calc
+      if (!balances[uid]) balances[uid] = 0;
+      balances[uid] += net;
+    });
+
+    html += `</div></div>`;
+  });
+
+  container.innerHTML = html;
+
+  // ================= WEEKLY =================
+  let whtml = `<div class="ipl-money-hero">
+    <div class="ipl-money-hero-title">📅 Weekly Summary</div>
   `;
+
+  Object.entries(weekly).forEach(([uid, amt]) => {
+    const name = G.players[uid]?.name || "—";
+
+    whtml += `
+      <div class="ipl-mmrow">
+        <span>${name}</span>
+        <span style="color:${amt>=0?'#22c55e':'#ef4444'}">
+          ${amt>=0?'+':''}₹${amt.toFixed(1)}
+        </span>
+      </div>
+    `;
+  });
+
+  whtml += `</div>`;
+  weeklyBox.innerHTML = whtml;
+
+  // ================= SETTLEMENT =================
+  let winners = [];
+  let losers = [];
+
+  Object.entries(balances).forEach(([uid, amt]) => {
+    if (amt > 0) winners.push({uid, amt});
+    if (amt < 0) losers.push({uid, amt});
+  });
+
+  let shtml = `<div class="ipl-money-hero">
+    <div class="ipl-money-hero-title">💸 Settlement</div>
+  `;
+
+  losers.forEach(l => {
+    let owe = Math.abs(l.amt);
+
+    winners.forEach(w => {
+      if (w.amt <= 0 || owe <= 0) return;
+
+      const pay = Math.min(owe, w.amt);
+
+      shtml += `
+        <div class="ipl-mmrow">
+          <span>${G.players[l.uid].name} → ${G.players[w.uid].name}</span>
+          <span>₹${pay.toFixed(1)}</span>
+        </div>
+      `;
+
+      w.amt -= pay;
+      owe -= pay;
+    });
+  });
+
+  shtml += `</div>`;
+  settleBox.innerHTML = shtml;
+}
+function exportToExcel() {
+  let rows = [
+    ["Date","Match","Player","Pick","Result","Entry","Win","Net"]
+  ];
+
+  G.fixtures.forEach(f => {
+    const result = G.results[f.id];
+    if (!result) return;
+
+    const players = Object.entries(G.players)
+      .filter(([,p]) => p.picks?.[f.id]);
+
+    const pool = players.length * ENTRY_FEE;
+    const winners = players.filter(([,p]) => p.picks[f.id] === result);
+    const winAmt = winners.length ? pool / winners.length : 0;
+
+    players.forEach(([uid, p]) => {
+      const isWinner = winners.find(w => w[0] === uid);
+      const net = isWinner ? (winAmt - ENTRY_FEE) : -ENTRY_FEE;
+
+      rows.push([
+        f.date,
+        `${f.home} vs ${f.away}`,
+        p.name,
+        p.picks[f.id],
+        isWinner ? "Win" : "Loss",
+        -ENTRY_FEE,
+        isWinner ? winAmt : 0,
+        net
+      ]);
+    });
+  });
+
+  let csv = rows.map(r => r.join(",")).join("\n");
+
+  const blob = new Blob([csv], { type: "text/csv" });
+  const url = URL.createObjectURL(blob);
+
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "IPL_Money_Report.csv";
+  a.click();
 }
 
 // ── ADMIN ─────────────────────────────────────────────────────
