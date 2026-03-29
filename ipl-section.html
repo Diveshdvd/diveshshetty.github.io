@@ -496,16 +496,16 @@ const LOCK_MINS   = 30;
 const ENTRY_FEE   = 20; // ₹20 per player per match
 
 const TD = {
-  'Royal Challengers Bengaluru': {s:'RCB', c:'#E63329',l:'https://g.cricapi.com/iapi/164-637877069388290486.webp?w=64'},
-  'Mumbai Indians':              {s:'MI',  c:'#004BA0',l:'https://g.cricapi.com/iapi/54-637877070395697396.webp?w=64'},
-  'Chennai Super Kings':         {s:'CSK', c:'#F9CD05',l:'https://g.cricapi.com/iapi/18-637877069634567872.webp?w=64'},
-  'Kolkata Knight Riders':       {s:'KKR', c:'#3B1F8C',l:'https://g.cricapi.com/iapi/38-637877069894596096.webp?w=64'},
-  'Punjab Kings':                {s:'PBKS',c:'#D71920',l:'https://g.cricapi.com/iapi/72-637877070620502818.webp?w=64'},
-  'Delhi Capitals':              {s:'DC',  c:'#17479E',l:'https://g.cricapi.com/iapi/19-637877070154553484.webp?w=64'},
-  'Rajasthan Royals':            {s:'RR',  c:'#EA1A85',l:'https://g.cricapi.com/iapi/74-637877070854949074.webp?w=64'},
-  'Sunrisers Hyderabad':         {s:'SRH', c:'#F7671F',l:'https://g.cricapi.com/iapi/85-637877071614349038.webp?w=64'},
-  'Gujarat Titans':              {s:'GT',  c:'#1C4B7E',l:'https://g.cricapi.com/iapi/4444-638054978470960386.webp?w=64'},
-  'Lucknow Super Giants':        {s:'LSG', c:'#A2DFED',l:'https://g.cricapi.com/iapi/4443-638054977902009193.webp?w=64'},
+  'Royal Challengers Bengaluru': {s:'RCB', c:'#E63329', l:'https://upload.wikimedia.org/wikipedia/en/4/47/Royal_Challengers_Bangalore_Logo.svg'},
+  'Mumbai Indians':              {s:'MI',  c:'#004BA0', l:'https://upload.wikimedia.org/wikipedia/en/c/cd/Mumbai_Indians_Logo.svg'},
+  'Chennai Super Kings':         {s:'CSK', c:'#F9CD05', l:'https://upload.wikimedia.org/wikipedia/en/2/2e/Chennai_Super_Kings_Logo.svg'},
+  'Kolkata Knight Riders':       {s:'KKR', c:'#3B1F8C', l:'https://upload.wikimedia.org/wikipedia/en/4/4a/Kolkata_Knight_Riders_Logo.svg'},
+  'Punjab Kings':                {s:'PBKS',c:'#D71920', l:'https://upload.wikimedia.org/wikipedia/en/d/d4/Punjab_Kings_Logo.svg'},
+  'Delhi Capitals':              {s:'DC',  c:'#17479E', l:'https://upload.wikimedia.org/wikipedia/en/2/2f/Delhi_Capitals.svg'},
+  'Rajasthan Royals':            {s:'RR',  c:'#EA1A85', l:'https://upload.wikimedia.org/wikipedia/en/6/60/Rajasthan_Royals_Logo.svg'},
+  'Sunrisers Hyderabad':         {s:'SRH', c:'#F7671F', l:'https://upload.wikimedia.org/wikipedia/en/8/81/Sunrisers_Hyderabad.svg'},
+  'Gujarat Titans':              {s:'GT',  c:'#1C4B7E', l:'https://upload.wikimedia.org/wikipedia/en/0/09/Gujarat_Titans_Logo.svg'},
+  'Lucknow Super Giants':        {s:'LSG', c:'#A2DFED', l:'https://upload.wikimedia.org/wikipedia/en/7/7a/Lucknow_Super_Giants_Logo.svg'},
 };
 const td = n => TD[n] || {s:n.slice(0,3).toUpperCase(),c:'#7dd3fc',l:null};
 
@@ -793,7 +793,8 @@ function iplFxCard(f,p,now){
   const diff=mDT-now;let cd='';
   if(!over&&diff>0){const dd=Math.floor(diff/86400000),hh=Math.floor((diff%86400000)/3600000),mm=Math.floor((diff%3600000)/60000);if(dd>0)cd=`<span class="ipl-fx-cd">in ${dd}d ${hh}h</span>`;else if(hh>0)cd=`<span class="ipl-fx-cd">in ${hh}h ${mm}m</span>`;else cd=`<span class="ipl-fx-cd soon">Starting soon!</span>`;}
   const deadlineTag=!over&&!hardLocked?`<span class="ipl-fx-deadline">Pick until ${pickDeadline(f)}</span>`:!over&&hardLocked?`<span class="ipl-fx-locked-tag">🔒 Picks closed</span>`:'';
-
+  const h = td(f.home);
+  const a = td(f.away);
   // Money pool info
   const mc=over?calcMatchMoney(f.id):null;
   const poolPlayers=Object.values(G.players).filter(pl=>(pl.picks||{})[f.id]).length;
@@ -889,7 +890,39 @@ if(!over){
     <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap;">
       ${poolBadge} ${myMoneyLine}
     </div>
-    <div class="ipl-teams">${tbtn[0]}<div class="ipl-vs">VS</div>${tbtn[1]}</div>
+    <div class="ipl-teams">
+
+  <!-- HOME -->
+  <button class="ipl-tbtn ${myPick===f.home?'picked':''}">
+    
+    <img class="ipl-tlogo" src="${h.l}"
+      onerror="this.style.display='none'; this.nextElementSibling.style.display='grid';" />
+
+    <div class="ipl-tplc" style="display:none;background:${h.c}">
+      ${h.s}
+    </div>
+
+    <div class="ipl-tshort">${h.s}</div>
+    <div class="ipl-tfull">${f.home}</div>
+  </button>
+
+  <div class="ipl-vs">VS</div>
+
+  <!-- AWAY -->
+  <button class="ipl-tbtn ${myPick===f.away?'picked':''}">
+    
+    <img class="ipl-tlogo" src="${a.l}"
+      onerror="this.style.display='none'; this.nextElementSibling.style.display='grid';" />
+
+    <div class="ipl-tplc" style="display:none;background:${a.c}">
+      ${a.s}
+    </div>
+
+    <div class="ipl-tshort">${a.s}</div>
+    <div class="ipl-tfull">${f.away}</div>
+  </button>
+
+</div>
     ${liveHtml}
     <div class="ipl-venue">📍 ${f.venue}</div>
     ${pubHtml}
