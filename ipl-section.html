@@ -893,7 +893,10 @@ if(!over){
     <div class="ipl-teams">
 
   <!-- HOME -->
-  <button class="ipl-tbtn ${myPick===f.home?'picked':''}">
+  <button 
+  class="ipl-tbtn ${myPick===f.home?'picked':''}" 
+  onclick="iplOpenModal('${f.id}','${f.home.replace(/'/g,"\\'")}')"
+>
     
     <img class="ipl-tlogo" src="${h.l}"
       onerror="this.style.display='none'; this.nextElementSibling.style.display='grid';" />
@@ -909,7 +912,10 @@ if(!over){
   <div class="ipl-vs">VS</div>
 
   <!-- AWAY -->
-  <button class="ipl-tbtn ${myPick===f.away?'picked':''}">
+  <button 
+  class="ipl-tbtn ${myPick===f.away?'picked':''}" 
+  onclick="iplOpenModal('${f.id}','${f.away.replace(/'/g,"\\'")}')"
+>
     
     <img class="ipl-tlogo" src="${a.l}"
       onerror="this.style.display='none'; this.nextElementSibling.style.display='grid';" />
