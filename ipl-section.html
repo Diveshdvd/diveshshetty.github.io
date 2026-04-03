@@ -320,7 +320,42 @@ fbDb.enablePersistence({ synchronizeTabs: true }).catch(() => {});
   .ipl-wrap{padding:0 14px 80px;}
   .ipl-week-table th:nth-child(3),.ipl-week-table td:nth-child(3){display:none;}
 }
+/* Better mobile spacing */
+@media(max-width:640px){
 
+  .ipl-fx {
+    padding: 14px;
+  }
+
+  .ipl-pub-picks {
+    gap: 4px;
+  }
+
+  .ipl-pub-pick {
+    font-size: 11px;
+    padding: 4px 8px;
+  }
+
+  .ipl-tbtn {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+  }
+
+  .ipl-tlogo {
+    width: 32px;
+    height: 32px;
+  }
+
+  .ipl-tshort {
+    font-size: 1rem;
+  }
+
+  .ipl-tfull {
+    font-size: 0.6rem;
+  }
+}
 /* ================= FINAL FIX ================= */
 
 /* Force proper dark background */
@@ -382,6 +417,10 @@ html, body {
 /* Fix venue text */
 .ipl-venue {
   color: #94a3b8;
+}
+.ipl-pub-pick.me {
+  border: 1px solid #facc15;
+  background: rgba(250,204,21,0.1);
 }
 </style>
 
@@ -817,57 +856,48 @@ function iplFxCard(f,p,now){
   // Public picks (SAFE VERSION — NO NAMES)
 let pubHtml = '';
 
+if(myPick){
+  pubHtml += `
+    <div style="margin-top:6px;font-size:11px;color:#facc15">
+      👉 You picked ${td(myPick).s}
+    </div>
+  `;
+}
+
 if(!over){
-  const byTeam = { [f.home]: 0, [f.away]: 0 };
+  const picks = {};
 
   Object.values(G.players).forEach(pl => {
     const pk = (pl.picks||{})[f.id];
-    if(pk && byTeam[pk] !== undefined) byTeam[pk]++;
+    if(pk){
+      if(!picks[pk]) picks[pk] = [];
+      picks[pk].push(pl.name);
+    }
   });
 
-  const total = byTeam[f.home] + byTeam[f.away];
+  const total = Object.values(picks).reduce((a,b)=>a+b.length,0);
 
   if(total > 0){
-    const homePct = Math.round((byTeam[f.home] / total) * 100);
-    const awayPct = 100 - homePct;
+    pubHtml = `<div class="ipl-pub-picks-lbl">Who picked what</div>`;
 
-    pubHtml = `
-      <div class="ipl-pub-picks-lbl">Office picks</div>
-      <div style="font-size:12px;color:#94a3b8;margin-bottom:6px">
-        ${total} entries
-      </div>
+    [f.home, f.away].forEach(team => {
+      const users = picks[team] || [];
 
-      <div style="display:flex;align-items:center;gap:8px">
-        <div style="flex:1;height:6px;background:#222;border-radius:10px;overflow:hidden">
-          <div style="width:${homePct}%;background:${TD[f.home]?.c||'#38bdf8'};height:100%"></div>
-        </div>
-        <div style="font-size:11px">${homePct}%</div>
-      </div>
-
-      <div style="display:flex;align-items:center;gap:8px;margin-top:4px">
-        <div style="flex:1;height:6px;background:#222;border-radius:10px;overflow:hidden">
-          <div style="width:${awayPct}%;background:${TD[f.away]?.c||'#38bdf8'};height:100%"></div>
-        </div>
-        <div style="font-size:11px">${awayPct}%</div>
-      </div>
-    `;
+      if(users.length){
+        pubHtml += `
+          <div class="ipl-pub-picks">
+            ${users.map(name => `
+  <div class="ipl-pub-pick ${name === G.me.name ? 'me' : ''}">
+                <span class="ipl-pub-pick-dot" style="background:${TD[team]?.c}"></span>
+                ${name}
+              </div>
+            `).join('')}
+          </div>
+        `;
+      }
+    });
   }
 }
-
-  // Team buttons
-  const tbtn=[f.home,f.away].map(team=>{
-    const t=td(team);let cls='ipl-tbtn';
-    if(over){if(team===res)cls+=' winner';if(team===myPick&&correct)cls+=' correct';else if(team===myPick&&wrong)cls+=' wrong';}
-    else if(team===myPick){cls+=' picked';if(hardLocked)cls+=' hard-locked';}
-    const dis=(over||hardLocked)?'disabled':'';
-    const logo=`<img class="ipl-tlogo" src="${t.l}" alt="${t.s}" onerror="this.style.display='none';this.nextElementSibling.style.display='grid'">`;
-    const plc=`<div class="ipl-tplc" style="background:${t.c};display:${t.l?'none':'grid'}">${t.s}</div>`;
-    const fds=!over?(FORM[team]||[]).map(r=>`<div class="ipl-fd ${r}"></div>`).join(''):'';
-    return`<button class="${cls}" ${dis} onclick="iplOpenModal('${f.id}','${team.replace(/'/g,"\\'")}')">
-      ${logo}${plc}<div class="ipl-tshort">${t.s}</div><div class="ipl-tfull">${team}</div>
-      ${fds?`<div class="ipl-form">${fds}</div>`:''}
-    </button>`;
-  });
 
   let ps='';
   if(over&&correct)ps=`<div class="ipl-ps ok">✅ +1 point — Correct! Winner: ${td(res).s}</div>`;
