@@ -439,7 +439,7 @@ html, body {
 
   <!-- Strip -->
   <div class="ipl-strip reveal">
-    <div class="ipl-tile"><div class="ipl-tile-v" id="gs-m">20</div><div class="ipl-tile-l">Matches</div></div>
+    <div class="ipl-tile"><div class="ipl-tile-v" id="gs-m">72</div><div class="ipl-tile-l">Matches</div></div>
     <div class="ipl-tile"><div class="ipl-tile-v" id="gs-p">—</div><div class="ipl-tile-l">Players</div></div>
     <div class="ipl-tile"><div class="ipl-tile-v" id="gs-d">0</div><div class="ipl-tile-l">Results In</div></div>
     <div class="ipl-tile"><div class="ipl-tile-v" id="gs-l">—</div><div class="ipl-tile-l">Leader</div></div>
@@ -566,6 +566,12 @@ const WEEKS = [
   {label:'Week 1', start:'2026-03-28', end:'2026-04-03', matches:['m01','m02','m03','m04','m05','m06','m07']},
   {label:'Week 2', start:'2026-04-04', end:'2026-04-10', matches:['m08','m09','m10','m11','m12','m13','m14','m15','m16']},
   {label:'Week 3', start:'2026-04-11', end:'2026-04-12', matches:['m17','m18','m19','m20']},
+   {
+    label:'Playoffs',
+    start:'2026-05-26',
+    end:'2026-05-31',
+    matches:['m71','m72','m73','m74'],
+  }
 ];
 
 const G = {
@@ -702,6 +708,9 @@ function buildFixtures(){return[
   {id:'m68',num:68,date:'2026-05-23',time:'19:30',home:'Lucknow Super Giants',away:'Punjab Kings',venue:'Lucknow'},
   {id:'m69',num:69,date:'2026-05-24',time:'15:30',home:'Mumbai Indians',away:'Rajasthan Royals',venue:'Mumbai'},
   {id:'m70',num:70,date:'2026-05-24',time:'19:30',home:'Kolkata Knight Riders',away:'Delhi Capitals',venue:'Kolkata'}
+  {id:'m71',num:71,date:'2026-05-26',time:'19:30',home:'Royal Challengers Bengaluru',away:'Gujarat Titans'venue:'Himachal Pradesh Cricket Association Stadium, Dharamshala'},
+  {id:'m72',num:72,date:'2026-05-27',time:'19:30',home:'Sunrisers Hyderabad',away:'Rajasthan Royals',venue:'New International Cricket Stadium, New Chandigarh'
+},
 ];}
 
 function isPickLocked(f){
